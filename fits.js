@@ -17,7 +17,18 @@
   
   var blockSize = 2880; // In bytes
   var recordSize = 80;
-  var fitsCharacters = /\b([\020-\126]*)\b/;
+  var mandatoryKeywordsPrimaryHeader = ['BITPIX','NAXIS'];  
+  var mandatoryKeywordsExtensions = [];
+  var fixedFormatKeywords = {
+    BITPIX: {
+      valueType: "integer",
+      validValues: [8,16,32,64,-32,-64]
+    },
+    NAXIS: {
+     valueType: "integer",
+     validValues: { min: 0, max: 999} 
+    }
+  };
   
   function extend(objTarget, objSource){
     for (var prop in objSource) {
@@ -34,17 +45,30 @@
   
   function parseHeaderRecord(recordString, error, warning){
     var record = {};
-    // Replace multiple spaces by a single one
-    var keyWord = recordString.substring(0, 8); // Sec 4.1.2.1
+    var valueComment = recordString.substring(10);
+    var value;
+    var comment;
+    var keyWord = recordString.substring(0, 8); // Keyword in the first 8 bytes. Sec 4.1.2.1
     keyWord = keyWord.trim();
-    if(!/^[\x30-\x39\x41-\x5A\x5F\x2D]+$/.test(keyWord)){ // Allowed characters in keyword Sec 4.1.2.1
-      error("Illegal characther in header keyWord: " + keyWord);
+    if(keyWord&&!/^[\x30-\x39\x41-\x5A\x5F\x2D]+$/.test(keyWord)){ // Allowed characters in keyword Sec 4.1.2.1
+      error("Illegal characther in header keyWord " + keyWord);
     }
     if(recordString.charCodeAt(8) != 61 || recordString.charCodeAt(9) != 32){ // Value indicator Sec 4.1.2.2
-      error("Error in header record. The keyword must be followed by the '=' character and one blank space. It might be that the keyword is larger than 8 characters");
-    } 
-  
+      comment = recordString.substring(8).trim(); // If not value all the rest of the record treated like a comment Sec 4.1.2.3
+    }
+    else{ 
+      valueComment = valueComment.split(/\//);
+      value = valueComment[0].trim();
+      if(valueComment[1]){
+        comment = valueComment[1].trim();
+        if(!/^[\x20-\x7E]*$/.test(comment)){ // Allowed characters in comments Sec 4.1.2.3
+          warning("Illegal characther in record comment for record " + keyWord);
+        }
+      }
+    }
     record.keyWord = keyWord;
+    record.comment = comment;
+    record.value = value;
     return record;
   }
   
@@ -74,6 +98,7 @@
     var file;
     var data = [];
     var headerRecords = [];
+    var headerDataUnits = [];
     var fileBytePointer = 0;
     var slice;
     
@@ -89,7 +114,6 @@
     function parseHeaderBlocks(success, error){
       var fileBlock;
       var reader = new FileReader();
-      var records = headerRecords;
       
       var parseError = function(message){
         error("Error parsing file: " + message);
@@ -107,7 +131,7 @@
           error("Ilegal character in header block")
         }
         parsedRecords = parseHeaderBlock(this.result, parseError, parseWarning);
-        records = extend(records, parsedRecords);
+        headerRecords = [].concat(headerRecords, parsedRecords);
         if(parsedRecords.errorMessage){
           parseError(parsedRecords.errorMessage);
         }
@@ -115,8 +139,7 @@
           parseHeaderBlocks(success, error);
         }
         else{
-          //parseDataBlocks();
-          success(records, data); 
+          success(headerRecords); 
         }
       };
 
@@ -145,6 +168,25 @@
       reader.readAsText(fileBlock);
       
     }
+    
+    function parseDataBlocks(success, error){
+      var data = [];
+      success(data);
+    }
+    
+    function parseHeaderDataUnit(success, error){
+      var header;
+      var extensions;
+      var succesParsingHeader = function(headerRecords){
+        header = headerRecords;
+        parseDataBlocks(successParsingData, error);
+      };
+      
+      var successParsingData = function(data){
+        success({'header': header, 'data': data});
+      };
+      parseHeaderBlocks(succesParsingHeader,error);
+    }
    
     this.parse = function(inputFile){
       headerRecords = [];
@@ -155,7 +197,7 @@
         console.error('Failed when loading file. No file selected');
         return;
       }
-      parseHeaderBlocks(this.onParsed, this.onError);
+      parseHeaderDataUnit(this.onParsed, this.onError); 
     };
     
     this.onParsed = function(header, data){};
