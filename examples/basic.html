@@ -7,8 +7,8 @@
   <script>
     function readFile(file){
       var fitsParser = new FITS.FileParser();
-      fitsParser.onParsed = function(headerRecords, data){
-        var records = headerRecords;
+      fitsParser.onParsed = function(header, data, headerRecords){
+        var headerJSON = header;
         console.log("File read!");
       }
       var fitsHeader = fitsParser.parse(file);

@@ -19,39 +19,97 @@
   
   var blockSize = 2880; // In bytes
   var recordSize = 80;
-  var stringValue = /^\x27[\x20-\x7E]*\x27$/;
   var mandatoryKeywordsPrimaryHeader = ['BITPIX', 'NAXIS'];  // Sec 4.4.1.1
   var mandatoryKeywordsExtensions = ['XTENSION', 'BITPIX', 'NAXIS', 'PCOUNT', 'GCOUNT']; // Sec 4.4.1.2
   
+  var grammar = {
+    "keyword" : /^[\x30-\x39\x41-\x5A\x5F\x2D]+$/, // Sec 4.1.2.1
+    "comment" : /^[\x20-\x7E]*$/, // Sec 4.1.2.3
+    "string" : /^\x27[\x20-\x7E]*\x27$/,
+    "integer" : /^[-+]{0,1}\d+$/,
+    "float" : /^[-+]{0,1}\d*(\.\d*){0,1}([ED][-+]{0,1}\d+){0,1}$/,
+    "valueComment" : /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/,
+    "logical" : /^(T|F)$/,
+    "naxis" : /^NAXIS\d{1,3}$/
+  };
+  
   function validateLogical(value, error) {
-    if (!/^(T|F)$/.test(value)) {
-      error('Logical value: ' + value + 'not valid. Must be T or F');
+    if (value) {
+      if (!grammar.logical.test(value)) {
+        error('Logical value: ' + value + 'not valid. Must be T or F');
+        return;
+      }
     } 
+    return value === 'T'? true : false;
   }
   
   function validateDate(value, error) {
+    return value;
   }
   
-  function validateInteger(value, error) {
+  function validateFloat(value, error){
+    if (value) {  
+      if (!grammar['float'].test(value)) {
+        error('Float ' + value + ' has no valid format');
+        return;
+      }
+    }
+    return parseFloat(value);
+  }
+  
+  function validateInteger(value, error) { // Sec 4.2.3
+    if (value) {  
+      if (!grammar.integer.test(value)) {
+        error('Integer ' + value + ' has no valid format. Sec 4.2.3');
+        return;
+      }
+    }
+    return parseInt(value);       
   }
   
   function validateString(value, error) { // Sec 4.2.1
-    if (!stringValue.test(value)) {
-      error('String ' + value + ' contains non valid characters. Sec 4.2.1');
-      return false;
+    if (value) {  
+      if (!grammar.string.test(value)) {
+        error('String ' + value + ' contains non valid characters. Sec 4.2.1');
+        return;
+      }
+      if (value.length > 68) {
+        error('String ' + value + 'too long. Limit is 68 characters. Sec 4.2.1');
+        return;
+      }
+      value = value.replace(/\x27{2}/g, "'"); // Replace two sucesive quotes with a single one.
+      value = value.replace(/\x27/g, ''); // Enclosing single quotes are redundant at this point. We have a JavaScript native String.
+      value = trim(value, false, true); // Removing non significant trailing spaces. Sec. 4.2.1 
     }
-    if (value.length > 68) {
-      error('String ' + value + 'too long. Limit is 68 characters. Sec 4.2.1');
-      return false;
-    }
-    value.replace(/\x27{2}/g, "'"); // Replace two sucesive quotes with a single one.
     return value;
   }
   
   function validateBITPIX(value, error) {
+    var validValues = fixedFormatKeywords.BITPIX.validValues;
+    var i = 0;
+    var valid = false;
+    value = parseInt(validateInteger(value, error));
+    while (i < validValues.length) {
+      if (validValues[i] === value) {
+        valid = true;
+        break;
+      }
+      i += 1;
+    } 
+    if(!valid){
+      error('Not valid value for NAXIS: ' + value + ' Accepted values are ' + validValues.toString() + ' Sec 4.4.1');
+      return;
+    }
+    return value;
   }
   
   function validateNAXIS(value, error) {
+    value = parseInt(validateInteger(value, error));
+    if (value <= 0 || value > 999) {
+      error('Not valid value for NAXIS: ' + value + ' Accepted values between 1 and 999. Sec 4.4.1');
+      return;
+    } 
+    return value;
   }
   
   function validatePrimaryHeader() {
@@ -71,35 +129,70 @@
   }
   
   var fixedFormatKeywords = {
-    BITPIX: { // Sec 4.4.1.1
-      type: "integer",
+    "BITPIX": { // Sec 4.4.1.1
       validValues: [8, 16, 32, 64, -32, -64],
       validate: validateBITPIX
     },
-    NAXIS: { // Sec 4.4.1.1
-      type: "integer",
+    "NAXIS": { // Sec 4.4.1.1
       validValues: { min: 0, max: 999 },
       validate: validateNAXIS
     },
-    PCOUNT: {
-      type: "integer",
+    "PCOUNT": {
       validate: validateInteger
     },
-    GCOUNT: {
-      type: "integer",
+    "GCOUNT": {
       validate: validateInteger
     },
-    DATE: {
-      type: "date",
+    "DATE": {
       validate: validateDate 
     },
-    ORIGIN: {
-      type: "string",
+    "ORIGIN": {
       validate: validateString 
     },
-    EXTEND: {
-      type: "logical",
+    "EXTEND": {
       validate: validateLogical
+    },
+    "DATE-OBS": {
+      validate: validateDate
+    },
+    "TELESCOP": {
+      validate: validateString
+    },
+    "INSTRUME": {
+      validate: validateString
+    },
+    "OBSERVER": {
+      validate: validateString
+    },
+    "OBJECT": {
+     validate: validateString
+    },
+    "BSCALE": {
+      validate: validateFloat 
+    },
+    "BZERO": {
+      validate: validateFloat 
+    },
+    "BUNIT": {
+      validate: validateString
+    },
+    "BLANK": {
+      validate: validateString
+    },
+    "DATAMAX": {
+      validate: validateFloat
+    },
+    "DATAMIN": {
+      validate: validateFloat
+    },
+    "EXTNAME": {
+      validate: validateString
+    },
+    "EXTVER": {
+      validate: validateInteger
+    },
+    "EXTLEVEL": {
+      validate: validateInteger
     }
   };
   
@@ -119,10 +212,9 @@
   };
   
   function validateComment(comment, error) { 
-    var commentExpression = /^[\x20-\x7E]*$/; // Allowed characters in comments Sec 4.1.2.3
     if (comment) {
       comment = trim(comment);
-      if (!commentExpression.test(comment)) { 
+      if (!grammar.comment.test(comment)) { 
         error("Illegal characther in record comment for record " + keyword);
         return;
       }
@@ -131,10 +223,9 @@
   }
   
   function validateKeyword(keyword, error) { 
-    var keywordExpression = /^[\x30-\x39\x41-\x5A\x5F\x2D]+$/; // Allowed characters in keyword Sec 4.1.2.1
     keyword = trim(keyword);
     if (keyword) {
-      if (!keywordExpression.test(keyword)) { 
+      if (!grammar['keyword'].test(keyword)) { 
         error("Illegal characther in header keyword " + keyword);
         return;
       } 
@@ -142,35 +233,51 @@
     return keyword;
   }
   
+  function validateFreeFormatValue(value, keyword, error){
+    if (grammar.naxis.test(keyword)) {
+      return validateInteger(value,error);
+    }
+    if (grammar.string.test(value)) {
+      return validateString(value, error);
+    }
+    if (grammar.logical.test(value)) {
+      return validateLogical(value, error);
+    }
+    if (grammar.integer.test(value)) {
+      return validateInteger(value, error);
+    }
+    if (grammar['float'].test(value)) {
+      return validateFloat(value, error);
+    }
+    return value;
+  }
+  
   function validateValue(value, keyword, recordString, error){
-    var stringExpression = /^\s*\x27.*\x27\s*$/;
     if(value){
       value = trim(value);
-      if (stringExpression.test(value)) {
-        if (fixedFormatKeywords[keyword]) {
-          if (recordString.charCodeAt(10) !== 39) {
-            error("Illegal characther in header keyword " + keyword + " Fixed format keyword values must start with simple quote after ="); // Sec 4.2.1
-            return;
-          }
+      if (fixedFormatKeywords[keyword]) {
+        if (grammar.string.test(value) && recordString.charCodeAt(10) !== 39) {
+          error("Illegal characther in header keyword " + keyword + " Fixed format keyword values must start with simple quote after ="); // Sec 4.2.1
+          return;
         }
-        value = validateString(value, error).replace(/\x27/g, '');
-        value = trim(value, false, true); // Removing non significant trailing spaces. Sec. 4.2.1 
-        return value;
+        return fixedFormatKeywords[keyword].validate(value);
+      } else {
+        return validateFreeFormatValue(value, keyword, error);
       }
-      return value;
     }
+    return value;
   }
 
   function parseHeaderRecord(recordString, error, warning) {
     var record = {};
-    var valueCommentExpression = /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/;
-    var valueComment = valueCommentExpression.exec(recordString.substring(10));
+    var valueComment = grammar.valueComment.exec(recordString.substring(10));
     var value;
     var comment;
     var keyword = recordString.substring(0, 8); // Keyword in the first 8 bytes. Sec 4.1.2.1
     
     if (recordString.charCodeAt(8) !== 61 || recordString.charCodeAt(9) !== 32) { // Value indicator Sec 4.1.2.2
-      comment = recordString.substring(8); // If not value all the rest of the record treated like a comment Sec 4.1.2.3
+      comment = recordString.substring(8); // If not value all the rest of the record treated like a comment Sec 4.1.2
+      comment = comment.trim().replace(/^\/(.*)$/,"$1"); // Removing comment slash indicator
     } else {
       value = valueComment[1];
       comment = valueComment[2];
@@ -178,7 +285,7 @@
     
     record.keyword = validateKeyword(keyword, error) || undefined;
     record.comment = validateComment(comment, warning) || undefined;
-    record.value = validateValue(value, record.keyword, recordString, error) || undefined;
+    record.value = validateValue(value, record.keyword, recordString, error);
     return record;
   }
   
@@ -257,16 +364,11 @@
         if (headerRecords[0].keyword !== 'SIMPLE') {  
           parseError('First keyword in primary header must be SIMPLE'); // Sec 4.4.1.1
         } else {
-          if (headerRecords[0].value === 'F') {  
-            parseWarning("This file doesn't conform the standard"); // Sec 4.4.1.1
-          } else {
-            if (headerRecords[0].value !== 'T') {  
-              parseError('First value in primary header must be T'); // Sec 4.4.1.1
-            }
+          if (!headerRecords[0].value) {  
+            parseWarning("This file doesn't conform the standard. SIMPLE keyword value different than T"); // Sec 4.4.1.1
           }
         }
-      }
-      
+      }  
       fileBlock = slice.call(file, fileBytePointer, fileBytePointer + blockSize);
       fileBytePointer += blockSize;
       reader.readAsText(fileBlock);
@@ -277,11 +379,29 @@
       success(data);
     }
     
+    function parseHeaderJSON(headerRecords){
+      var i = 0;
+      var header = {};
+      var keyword;
+      var record;
+      while (i < headerRecords.length) {
+        record = headerRecords[i];
+        keyword = record.keyword;
+        if(keyword && keyword !== "COMMENT" && keyword !== "HISTORY"){
+          if (record.value) {
+            header[keyword] = record.value;
+          }
+        }
+        i += 1;
+      }
+      return header;
+    }
+    
     function parseHeaderDataUnit(success, error) {
       var header;
       var extensions;
       var successParsingData = function (data) {
-        success({'header': header, 'data': data});
+        success({'header': parseHeaderJSON(header), 'data': data, 'headerRecords': header});
       };
       
       var succesParsingHeader = function (headerRecords) {
@@ -304,7 +424,7 @@
       parseHeaderDataUnit(this.onParsed, this.onError); 
     };
     
-    this.onParsed = function (header, data) {};
+    this.onParsed = function (header, data, headerRecords) {};
     this.onError = function (error) {
       console.error(error);
     };
