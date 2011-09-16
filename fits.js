@@ -1,4 +1,5 @@
-// FITS Standard 3.0
+// FITS Standard 3.0 Parser
+// Author: Diego Marcos
 
 (function () {
   "use strict";
@@ -116,44 +117,68 @@
       return trimmedString;
     }
   };
+  
+  function validateComment(comment, error) { 
+    var commentExpression = /^[\x20-\x7E]*$/; // Allowed characters in comments Sec 4.1.2.3
+    if (comment) {
+      comment = trim(comment);
+      if (!commentExpression.test(comment)) { 
+        error("Illegal characther in record comment for record " + keyword);
+        return;
+      }
+    }
+    return comment;
+  }
+  
+  function validateKeyword(keyword, error) { 
+    var keywordExpression = /^[\x30-\x39\x41-\x5A\x5F\x2D]+$/; // Allowed characters in keyword Sec 4.1.2.1
+    keyword = trim(keyword);
+    if (keyword) {
+      if (!keywordExpression.test(keyword)) { 
+        error("Illegal characther in header keyword " + keyword);
+        return;
+      } 
+    }
+    return keyword;
+  }
+  
+  function validateValue(value, keyword, recordString, error){
+    var stringExpression = /^\s*\x27.*\x27\s*$/;
+    if(value){
+      value = trim(value);
+      if (stringExpression.test(value)) {
+        if (fixedFormatKeywords[keyword]) {
+          if (recordString.charCodeAt(10) !== 39) {
+            error("Illegal characther in header keyword " + keyword + " Fixed format keyword values must start with simple quote after ="); // Sec 4.2.1
+            return;
+          }
+        }
+        value = validateString(value, error).replace(/\x27/g, '');
+        value = trim(value, false, true); // Removing non significant trailing spaces. Sec. 4.2.1 
+        return value;
+      }
+      return value;
+    }
+  }
 
   function parseHeaderRecord(recordString, error, warning) {
     var record = {};
-    var valueCommentExpr = /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/;
-    var stringExpr = /^\s*\x27.*\x27\s*$/;
-    var valueComment = valueCommentExpr.exec(recordString.substring(10));
+    var valueCommentExpression = /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/;
+    var valueComment = valueCommentExpression.exec(recordString.substring(10));
     var value;
     var comment;
     var keyword = recordString.substring(0, 8); // Keyword in the first 8 bytes. Sec 4.1.2.1
-    keyword = trim(keyword);
-    if (keyword && !/^[\x30-\x39\x41-\x5A\x5F\x2D]+$/.test(keyword)) { // Allowed characters in keyword Sec 4.1.2.1
-      error("Illegal characther in header keyword " + keyword);
-    }
+    
     if (recordString.charCodeAt(8) !== 61 || recordString.charCodeAt(9) !== 32) { // Value indicator Sec 4.1.2.2
-      comment = trim(recordString.substring(8)); // If not value all the rest of the record treated like a comment Sec 4.1.2.3
+      comment = recordString.substring(8); // If not value all the rest of the record treated like a comment Sec 4.1.2.3
     } else {
-      value = trim(valueComment[1]) || undefined;
-      comment = trim(valueComment[2]) || undefined;
-      if (value) {
-        if (stringExpr.test(value)) {
-          if (fixedFormatKeywords[keyword]) {
-            if (recordString.charCodeAt(10) !== 39) {
-              error("Illegal characther in header keyword " + keyword + " Fixed format keyword values must start with simple quote after ="); // Sec 4.2.1
-            }
-          }
-          value = validateString(value, error).replace(/\x27/g, '');
-          value = trim(value, false, true); // Removing non significant trailing spaces. Sec. 4.2.1 
-        }
-      }
-      if (comment) {
-        if (!/^[\x20-\x7E]*$/.test(comment)) { // Allowed characters in comments Sec 4.1.2.3
-          warning("Illegal characther in record comment for record " + keyword);
-        }
-      }
+      value = valueComment[1];
+      comment = valueComment[2];
     }
-    record.keyword = keyword;
-    record.comment = comment;
-    record.value = value;
+    
+    record.keyword = validateKeyword(keyword, error) || undefined;
+    record.comment = validateComment(comment, warning) || undefined;
+    record.value = validateValue(value, record.keyword, recordString, error) || undefined;
     return record;
   }
   
@@ -245,7 +270,6 @@
       fileBlock = slice.call(file, fileBytePointer, fileBytePointer + blockSize);
       fileBytePointer += blockSize;
       reader.readAsText(fileBlock);
-      
     }
     
     function parseDataBlocks(success, error) {
