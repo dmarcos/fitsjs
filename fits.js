@@ -22,20 +22,27 @@
   var mandatoryKeywordsPrimaryHeader = ['BITPIX', 'NAXIS'];  // Sec 4.4.1.1
   var mandatoryKeywordsExtensions = ['XTENSION', 'BITPIX', 'NAXIS', 'PCOUNT', 'GCOUNT']; // Sec 4.4.1.2
   
-  var grammar = {
+  var expressions = {
     "keyword" : /^[\x30-\x39\x41-\x5A\x5F\x2D]+$/, // Sec 4.1.2.1
     "comment" : /^[\x20-\x7E]*$/, // Sec 4.1.2.3
     "string" : /^\x27[\x20-\x7E]*\x27$/,
     "integer" : /^[-+]{0,1}\d+$/,
+    "complexInteger" : /^\(\s*([-+]{0,1}\d)\s*,\s*([-+]{0,1}\d)\s*\)$/,
     "float" : /^[-+]{0,1}\d*(\.\d*){0,1}([ED][-+]{0,1}\d+){0,1}$/,
+    "complexFloat" : /^\(\s*([-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][-+]{0,1}\d+){0,1})\s*,\s*([-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][-+]{0,1}\d+){0,1})\s*\)$/,
     "valueComment" : /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/,
     "logical" : /^(T|F)$/,
-    "naxis" : /^NAXIS\d{1,3}$/
+    "date" : /^\d{2,4}[:\/]\d{2}[:\/]\d{2}(T\d{2}:\d{2}:\d{2}(\.\d*){0,1}){0,1}$/,
+    "dateXXXX" : /^DATE(.){1,4}$/,
+    "ptypeXXX" : /^PTYPE\d{1,3}$/,
+    "pscalXXX" : /^PSCAL\d{1,3}$/,
+    "pzeroXXX" : /^PZERO\d{1,3}$/,
+    "naxis" : /^NAXIS\d{1,3}$/,
   };
   
   function validateLogical(value, error) {
     if (value) {
-      if (!grammar.logical.test(value)) {
+      if (!expressions.logical.test(value)) {
         error('Logical value: ' + value + 'not valid. Must be T or F');
         return;
       }
@@ -44,22 +51,44 @@
   }
   
   function validateDate(value, error) {
+    if (value) {  
+      value = value.replace(/\x27/g, ''); // Removing enclosing quotes.
+      if (!expressions['date'].test(value)) {
+        error('Date ' + value + ' has no valid format');
+        return;
+      }
+    }
     return value;
   }
   
-  function validateFloat(value, error){
+  function validateFloat(value, error){ // Sec 4.2.4
     if (value) {  
-      if (!grammar['float'].test(value)) {
-        error('Float ' + value + ' has no valid format');
+      if (!expressions['float'].test(value)) {
+        error('Float ' + value + ' has no valid format. Sec 4.2.4');
         return;
       }
     }
     return parseFloat(value);
   }
   
+  function validateComplexFloat(value, error) { // Sec 4.2.6
+    var parts;
+    if (value) {  
+      if (!expressions.complexFloat.test(value)) {
+        error('Complex Float ' + value + ' has no valid format. Sec 4.2.6');
+        return;
+      }
+      parts = expressions.complexFloat.exec(value);
+    }
+    return { 
+      real : parseFloat(parts[1]),
+      imaginary : parseFloat(parts[2])  
+    };
+  }
+  
   function validateInteger(value, error) { // Sec 4.2.3
     if (value) {  
-      if (!grammar.integer.test(value)) {
+      if (!expressions.integer.test(value)) {
         error('Integer ' + value + ' has no valid format. Sec 4.2.3');
         return;
       }
@@ -67,9 +96,24 @@
     return parseInt(value);       
   }
   
+  function validateComplexInteger(value, error) { // Sec 4.2.5
+    var parts;
+    if (value) {  
+      if (!expressions.complexInteger.test(value)) {
+        error('Complex Integer ' + value + ' has no valid format. Sec 4.2.5');
+      return;
+      }
+      parts = expressions.complexInteger.exec(value);
+    }
+    return { 
+      real : parseInt(parts[1]),
+      imaginary : parseInt(parts[2])  
+    };
+  }
+  
   function validateString(value, error) { // Sec 4.2.1
     if (value) {  
-      if (!grammar.string.test(value)) {
+      if (!expressions.string.test(value)) {
         error('String ' + value + ' contains non valid characters. Sec 4.2.1');
         return;
       }
@@ -214,7 +258,7 @@
   function validateComment(comment, error) { 
     if (comment) {
       comment = trim(comment);
-      if (!grammar.comment.test(comment)) { 
+      if (!expressions.comment.test(comment)) { 
         error("Illegal characther in record comment for record " + keyword);
         return;
       }
@@ -225,7 +269,7 @@
   function validateKeyword(keyword, error) { 
     keyword = trim(keyword);
     if (keyword) {
-      if (!grammar['keyword'].test(keyword)) { 
+      if (!expressions['keyword'].test(keyword)) { 
         error("Illegal characther in header keyword " + keyword);
         return;
       } 
@@ -234,19 +278,31 @@
   }
   
   function validateFreeFormatValue(value, keyword, error){
-    if (grammar.naxis.test(keyword)) {
-      return validateInteger(value,error);
+    if (expressions.dateXXXX.test(keyword)) {
+      return validateDate(value, error);
     }
-    if (grammar.string.test(value)) {
+    if (expressions.ptypeXXX.test(keyword)) {
       return validateString(value, error);
     }
-    if (grammar.logical.test(value)) {
-      return validateLogical(value, error);
+    if (expressions.pscalXXX.test(keyword)) {
+      return validFloat(value, error);
     }
-    if (grammar.integer.test(value)) {
+    if (expressions.pzeroXXX.test(keyword)) {
+      return validateFloat(value, error);
+    }
+    if (expressions.naxis.test(keyword)) {
       return validateInteger(value, error);
     }
-    if (grammar['float'].test(value)) {
+    if (expressions.string.test(value)) {
+      return validateString(value, error);
+    }
+    if (expressions.logical.test(value)) {
+      return validateLogical(value, error);
+    }
+    if (expressions.integer.test(value)) {
+      return validateInteger(value, error);
+    }
+    if (expressions['float'].test(value)) {
       return validateFloat(value, error);
     }
     return value;
@@ -256,11 +312,11 @@
     if(value){
       value = trim(value);
       if (fixedFormatKeywords[keyword]) {
-        if (grammar.string.test(value) && recordString.charCodeAt(10) !== 39) {
+        if (expressions.string.test(value) && recordString.charCodeAt(10) !== 39) {
           error("Illegal characther in header keyword " + keyword + " Fixed format keyword values must start with simple quote after ="); // Sec 4.2.1
           return;
         }
-        return fixedFormatKeywords[keyword].validate(value);
+        return fixedFormatKeywords[keyword].validate(value, error);
       } else {
         return validateFreeFormatValue(value, keyword, error);
       }
@@ -270,7 +326,7 @@
 
   function parseHeaderRecord(recordString, error, warning) {
     var record = {};
-    var valueComment = grammar.valueComment.exec(recordString.substring(10));
+    var valueComment = expressions.valueComment.exec(recordString.substring(10));
     var value;
     var comment;
     var keyword = recordString.substring(0, 8); // Keyword in the first 8 bytes. Sec 4.1.2.1
@@ -312,7 +368,7 @@
   
   FITS.FileParser = function () {
     var file;
-    var data = [];
+    var data = "";
     var headerRecords = [];
     var headerDataUnits = [];
     var fileBytePointer = 0;
@@ -336,7 +392,7 @@
       var parseWarning = function (message) {
         error("Warning: " + message);
       };
-       
+           
       reader.onload = function (e) {
         var parsedRecords;
         // Checking allowed characters in Header Data Unit (HDU). 
@@ -374,9 +430,33 @@
       reader.readAsText(fileBlock);
     }
     
-    function parseDataBlocks(success, error) {
-      var data = [];
-      success(data);
+    function parseDataBlocks(dataSize, success, error) {
+      var fileBlock;
+      var reader = new FileReader();
+      var parseError = function (message) {
+        error("Error parsing file: " + message);
+      };
+      reader.onload = function (e) {
+        dataSize -= e.loaded;
+        if (dataSize > 0) {
+          data += this.result; 
+          parseDataBlocks(dataSize, success, error);
+        } else {
+          if (dataSize < 0){
+            this.result = this.result.substring(0, this.result.length - Math.abs(dataSize));
+          }
+          data += this.result; 
+          success();
+        }  
+      };
+
+      reader.onerror = function (e) {
+        console.error("Error loading block");
+      };
+   
+      fileBlock = slice.call(file, fileBytePointer, fileBytePointer + blockSize);
+      fileBytePointer += blockSize;
+      reader.readAsBinaryString(fileBlock);
     }
     
     function parseHeaderJSON(headerRecords){
@@ -398,33 +478,58 @@
     }
     
     function parseHeaderDataUnit(success, error) {
-      var header;
-      var extensions;
-      var successParsingData = function (data) {
-        success({'header': parseHeaderJSON(header), 'data': data, 'headerRecords': header});
+      var headerJSON;
+      var dataSize;
+      var successParsingData = function () {
+        success({
+          "header": headerJSON,
+          "data": data,
+          "headerRecords": headerRecords
+        });
       };
       
-      var succesParsingHeader = function (headerRecords) {
-        header = headerRecords;
-        parseDataBlocks(successParsingData, error);
+      var succesParsingHeader = function (records) {
+        var i = 1;
+        headerRecords = records;
+        headerJSON = parseHeaderJSON(headerRecords);
+        dataSize = Math.abs(headerJSON.BITPIX) / 8;
+        while (i <= headerJSON.NAXIS) {
+          dataSize = dataSize * headerJSON["NAXIS" + i];
+          i += 1;
+        }
+        parseDataBlocks(dataSize, successParsingData, error);
       };
-      
+      headerRecords = [];
+      data = [];
       parseHeaderBlocks(succesParsingHeader, error);
     }
    
     this.parse = function (inputFile) {
-      headerRecords = [];
-      data = [];
       fileBytePointer = 0;
       file = inputFile;
+      var that = this;
       if (!file) {
         console.error('Failed when loading file. No file selected');
         return;
       }
-      parseHeaderDataUnit(this.onParsed, this.onError); 
+      
+      var onParsingHeaderDataUnit = function(error) {
+        that.onError(error);
+      }
+      
+      var onParsedHeaderDataUnit = function(headerDataUnit){
+        headerDataUnits.push(headerDataUnit);
+        if (fileBytePointer < file.fileSize){
+          parseHeaderDataUnit(onParsedHeaderDataUnit, onParsingHeaderDataUnit);
+        } else {
+          that.onParsed(headerDataUnits);
+        }
+      }    
+      parseHeaderDataUnit(onParsedHeaderDataUnit, onParsingHeaderDataUnit);
+       
     };
     
-    this.onParsed = function (header, data, headerRecords) {};
+    this.onParsed = function (headerDataUnits) {};
     this.onError = function (error) {
       console.error(error);
     };
