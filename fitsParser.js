@@ -1,5 +1,6 @@
 // FITS Standard 3.0 Parser
 // Author: Diego Marcos
+// Email: diego.marcos@gmail.com
 
 (function () {
   "use strict";
