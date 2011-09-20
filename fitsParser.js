@@ -12,7 +12,7 @@
   if (typeof exports !== 'undefined') {
     FITS = exports;
   } else {
-    FITS = root.FITS = {};
+    FITS = root.FITS = root.FITS || {};
   }
   
   FITS.version = '0.0.1';
@@ -429,18 +429,19 @@
       fileBytePointer += blockSize;
       reader.readAsText(fileBlock);
     }
-    
-    function parseDataBlocks(dataSize, success, error) {
+      
+    function parseDataBlocks(dataSize, bitsPerPixel, success, error) {
       var fileBlock;
       var reader = new FileReader();
       var parseError = function (message) {
         error("Error parsing file: " + message);
       };
+     
       reader.onload = function (e) {
         dataSize -= e.loaded;
         if (dataSize > 0) {
           data += this.result; 
-          parseDataBlocks(dataSize, success, error);
+          parseDataBlocks(dataSize, bitsPerPixel, success, error);
         } else {
           if (dataSize < 0){
             this.result = this.result.substring(0, this.result.length - Math.abs(dataSize));
@@ -497,7 +498,7 @@
           dataSize = dataSize * headerJSON["NAXIS" + i];
           i += 1;
         }
-        parseDataBlocks(dataSize, successParsingData, error);
+        parseDataBlocks(dataSize, headerJSON.BITPIX, successParsingData, error);
       };
       headerRecords = [];
       data = [];
