@@ -27,7 +27,6 @@
       margin: auto;
       padding: 10px
     }
-  
   </style>
 </head>
 <body>
@@ -38,6 +37,7 @@
 </body>
 <script src="../fitsParser.js" type="text/javascript"></script>
 <script src="../binaryDataView.js" type="text/javascript"></script>
+<script src="../fitsPixelParser.js" type="text/javascript"></script>
 <script>
    var dropbox = document.getElementById("dropbox");
    dropbox.addEventListener("dragenter", noopHandler, false);
@@ -66,8 +66,8 @@
      var fitsParser = new FITS.FileParser();
      fitsParser.onParsed = function(headerDataUnits){
        var HDUs = headerDataUnits;
-       var dataView = new FITS.BinaryDataView(HDUs[0].data);
-       var data = dataView.getUint8();
+       var dataView = new FITS.BinaryDataView(HDUs[0]);
+       var pixels = FITS.parsePixels(HDUs[0].header, HDUs[0].data, 'RGBA');
        console.log("File read!");
      }
      var fitsHeader = fitsParser.parse(file);

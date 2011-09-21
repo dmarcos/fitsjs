@@ -33,7 +33,7 @@
     "complexFloat" : /^\(\s*([-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][-+]{0,1}\d+){0,1})\s*,\s*([-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][-+]{0,1}\d+){0,1})\s*\)$/,
     "valueComment" : /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/,
     "logical" : /^(T|F)$/,
-    "date" : /^\d{2,4}[:\/]\d{2}[:\/]\d{2}(T\d{2}:\d{2}:\d{2}(\.\d*){0,1}){0,1}$/,
+    "date" : /^\d{2,4}[:\/\-]\d{2}[:\/\-]\d{2}(T\d{2}:\d{2}:\d{2}(\.\d*){0,1}){0,1}$/,
     "dateXXXX" : /^DATE(.){1,4}$/,
     "ptypeXXX" : /^PTYPE\d{1,3}$/,
     "pscalXXX" : /^PSCAL\d{1,3}$/,
@@ -445,9 +445,11 @@
           parseDataBlocks(dataSize, bitsPerPixel, success, error);
         } else {
           if (dataSize < 0){
-            this.result = this.result.substring(0, this.result.length - Math.abs(dataSize));
+            data += this.result.substring(0, this.result.length - Math.abs(dataSize));
           }
-          data += this.result; 
+          else{
+            data += this.result; 
+          }
           success();
         }  
       };
