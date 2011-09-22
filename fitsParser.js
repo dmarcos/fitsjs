@@ -517,19 +517,19 @@
         return;
       }
       
-      var onParsingHeaderDataUnit = function(error) {
+      var onErrorParsingHeaderDataUnit = function(error) {
         that.onError(error);
       }
       
       var onParsedHeaderDataUnit = function(headerDataUnit){
         headerDataUnits.push(headerDataUnit);
         if (fileBytePointer < file.fileSize){
-          parseHeaderDataUnit(onParsedHeaderDataUnit, onParsingHeaderDataUnit);
+          parseHeaderDataUnit(onParsedHeaderDataUnit, onErrorParsingHeaderDataUnit);
         } else {
           that.onParsed(headerDataUnits);
         }
       }    
-      parseHeaderDataUnit(onParsedHeaderDataUnit, onParsingHeaderDataUnit);
+      parseHeaderDataUnit(onParsedHeaderDataUnit, onErrorParsingHeaderDataUnit);
        
     };
     

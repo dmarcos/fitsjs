@@ -5,39 +5,39 @@
   <title>Simple FITS Loader</title>
   <style type="text/css">
     #dropbox{
+      display: inline-block;
       background-color: #F0EFD1;
-      width: 100%;
-      height: 480px; 
       border-radius: 5px;
       padding: 10px;
       border: 2px solid black;
-      margin-bottom: 10px;
       -moz-border-radius: 5px;
       -webkit-border-radius: 5px;
       text-align: center;
-      line-height: 300px;
     }
     
     #dropLabel{
       font: 22px 'Lucida Grande', 'Helvetica Neue', Arial, sans-serif;
     }
     
-    #wrapper{
-      width: 640px;
-      margin: auto;
-      padding: 10px
+    #wrapper{      
+      margin: auto; 
+      padding: 10px;
     }
   </style>
 </head>
 <body>
   <div id="wrapper">
-    <div id="dropbox"><span id="dropLabel">Drop file here...</span></div>
-    <input type="file" onchange="readFile(this.files[0])"> 
+    <div id="dropbox">
+    <span id="dropLabel">Drop file here...</span>
+    <canvas id="fitsCanvas" style="display: none"></canvas>
+  </div>
+    <input type="file" onchange="renderFile(this.files[0])" style="display: block; padding-top: 10px"> 
   </div> 
 </body>
 <script src="../fitsParser.js" type="text/javascript"></script>
 <script src="../binaryDataView.js" type="text/javascript"></script>
 <script src="../fitsPixelParser.js" type="text/javascript"></script>
+<script src="../fits.js" type="text/javascript"></script>
 <script>
    var dropbox = document.getElementById("dropbox");
    dropbox.addEventListener("dragenter", noopHandler, false);
@@ -58,19 +58,19 @@
      // Only call the handler if 1 or more files was dropped.
      if (count > 0) {
        document.getElementById("dropLabel").innerHTML = "Processing " + files[0].name;
-       readFile(files[0]);
+       renderFile(files[0]);
    	}
    }
  
-   function readFile(file){
-     var fitsParser = new FITS.FileParser();
-     fitsParser.onParsed = function(headerDataUnits){
-       var HDUs = headerDataUnits;
-       var dataView = new FITS.BinaryDataView(HDUs[0]);
-       var pixels = FITS.parsePixels(HDUs[0].header, HDUs[0].data, 'RGBA');
-       console.log("File read!");
-     }
-     var fitsHeader = fitsParser.parse(file);
+   function renderFile(file){
+     var canvas = document.getElementById('fitsCanvas');
+     var dropLabel = document.getElementById('dropLabel'); 
+     //canvas.setAttribute('width',this.width);
+     //canvas.setAttribute('height',this.height);
+     //canvas.setAttribute('id',this.id);
+     FITS.renderFile(file, canvas);
+     dropLabel.style.display = 'none';
+     canvas.style.display = 'inline-block';
    }
 </script>
 </html>
