@@ -32,8 +32,7 @@
     var fitsParser = new FITS.FileParser();
     fitsParser.onParsed = function(headerDataUnits){
       var HDUs = headerDataUnits;
-      // var dataView = new FITS.BinaryDataView(HDUs[0]);
-      var pixels = FITS.parsePixels(HDUs[0].header, HDUs[0].data, 'RGBA');
+      var pixels = FITS.parsePixels(HDUs[0].header, HDUs[0].data, 'RGBA', 'linear');
       var imageWidth = HDUs[0].header.NAXIS1;
       var imageHeight = HDUs[0].header.NAXIS2;
       canvas.setAttribute('width', imageWidth);

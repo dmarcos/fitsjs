@@ -21,7 +21,7 @@
   var blockSize = 2880; // In bytes
   var recordSize = 80;
   var mandatoryKeywordsPrimaryHeader = ['BITPIX', 'NAXIS'];  // Sec 4.4.1.1
-  var mandatoryKeywordsExtensions = ['XTENSION', 'BITPIX', 'NAXIS', 'PCOUNT', 'GCOUNT']; // Sec 4.4.1.2
+  var mandatoryKeywordsExtensionHeader = ['XTENSION', 'BITPIX', 'NAXIS', 'PCOUNT', 'GCOUNT']; // Sec 4.4.1.2
   
   var expressions = {
     "keyword" : /^[\x30-\x39\x41-\x5A\x5F\x2D]+$/, // Sec 4.1.2.1
@@ -157,10 +157,24 @@
     return value;
   }
   
-  function validatePrimaryHeader() {
+  function validatePrimaryHeader(header, error) {
+    var i = 0;
+    while (i < mandatoryKeywordsPrimaryHeader.length) {
+      if (header[mandatoryKeywordsPrimaryHeader[i]] === undefined) {
+        error('Keyword ' + keyword + ' not found in primary header');
+      }
+      i += 1;
+    }
   }
   
-  function validateExtensionHeader() {
+  function validateExtensionHeader(header, error) {
+    var i = 0;
+    while (i < mandatoryKeywordsExtensionHeader.length) {
+      if (header[mandatoryKeywordsExtensionHeader[i]] === undefined) {
+        error('Keyword ' + keyword + ' not found in primary header');
+      }
+      i += 1;
+    }
   }
   
   function extend(objTarget, objSource) {
@@ -431,36 +445,27 @@
       reader.readAsText(fileBlock);
     }
       
-    function parseDataBlocks(dataSize, bitsPerPixel, success, error) {
+    function parseDataBlocks(dataSize, success, error) {
       var fileBlock;
       var reader = new FileReader();
+      var blocksToRead = Math.ceil(dataSize / blockSize);
+      var bytesToRead = blocksToRead * blockSize;
       var parseError = function (message) {
         error("Error parsing file: " + message);
       };
      
       reader.onload = function (e) {
-        dataSize -= e.loaded;
-        if (dataSize > 0) {
-          data += this.result; 
-          parseDataBlocks(dataSize, bitsPerPixel, success, error);
-        } else {
-          if (dataSize < 0){
-            data += this.result.substring(0, this.result.length - Math.abs(dataSize));
-          }
-          else{
-            data += this.result; 
-          }
-          success();
-        }  
+        data = this.result; //.substring(0, dataSize); // Triming last bytes in excess in last block
+        success(); 
       };
 
       reader.onerror = function (e) {
-        console.error("Error loading block");
+        console.error("Error loading data block");
       };
    
-      fileBlock = slice.call(file, fileBytePointer, fileBytePointer + blockSize);
-      fileBytePointer += blockSize;
-      reader.readAsBinaryString(fileBlock);
+      fileBlock = slice.call(file, fileBytePointer, fileBytePointer + bytesToRead);
+      fileBytePointer += bytesToRead;
+      reader.readAsArrayBuffer(fileBlock);
     }
     
     function parseHeaderJSON(headerRecords){
@@ -501,7 +506,7 @@
           dataSize = dataSize * headerJSON["NAXIS" + i];
           i += 1;
         }
-        parseDataBlocks(dataSize, headerJSON.BITPIX, successParsingData, error);
+        parseDataBlocks(dataSize, successParsingData, error);
       };
       headerRecords = [];
       data = [];
@@ -522,6 +527,11 @@
       }
       
       var onParsedHeaderDataUnit = function(headerDataUnit){
+        if (headerDataUnits.length == 0){
+          validatePrimaryHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
+        } else {
+          validateExtensionHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
+        }
         headerDataUnits.push(headerDataUnit);
         if (fileBytePointer < file.fileSize){
           parseHeaderDataUnit(onParsedHeaderDataUnit, onErrorParsingHeaderDataUnit);

@@ -18,9 +18,37 @@
   } else {
     FITS = root.FITS = root.FITS || {};
   }
+  
+  function mapPixel(pixelValue, colorMapping, maxColorValue, highestPixelValue, lowestPixelValue, meanPixelValue){
+    var mappedValue;
+    var valuesRange = highestPixelValue - lowestPixelValue;
+    switch (colorMapping) { 
+      case 'linear' :
+        mappedValue = maxColorValue * ((pixelValue - lowestPixelValue) / valuesRange );
+        break;
+      case 'sqrt' :
+        mappedValue = maxColorValue * Math.sqrt((pixelValue - lowestPixelValue) / valuesRange );
+        break;
+      case 'cuberoot' :
+        mappedValue = maxColorValue * Math.pow((pixelValue - lowestPixelValue) / valuesRange );
+        break;
+      case 'log' :
+        mappedValue = maxColorValue * (Math.log((pixelValue - lowestPixelValue)) / valuesRange );
+        break;
+      case 'loglog':
+        mappedValue = maxColorValue * (Math.log((Math.log(pixelValue) - lowestPixelValue)) / valuesRange );
+        break;
+      case 'sqrtlog':
+        mappedValue = maxColorValue * (Math.sqrt((Math.log(pixelValue) - lowestPixelValue)) / valuesRange );
+        break;
+      default:
+        break;
+  	}
+  	return mappedValue;
+  }
 
-  function convertToRGBA(pixelValue, highestPixelValue, lowestPixelValue, meanPixelValue){
-    var colorValue = 255 * (pixelValue - lowestPixelValue) / (highestPixelValue - lowestPixelValue);
+  function convertToRGBA(pixelValue, colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue){
+    var colorValue = mapPixel(pixelValue, colorMapping, 255, highestPixelValue, lowestPixelValue, meanPixelValue);
     return {
       "red" : colorValue,
       "green" : colorValue,
@@ -73,7 +101,22 @@
     throw new Error('PIXEL PARSER - ' + message); 
   }
   
-  function transposePixels(pixels, width, height){
+  function flipVertical(pixels, width, height){
+    var flippedPixels = [];
+    var column = 0;
+    var row = 0;
+    while (row < height) {
+      column = 0;
+      while (column < width) {
+        flippedPixels[(height - row -1)*width + column] = pixels[row*width + column];
+        column += 1;  
+      }
+      row += 1;
+    } 
+    return flippedPixels;
+  }
+  
+  function transpose(pixels, width, height){
     var transposedPixels = [];
     var column = 0;
     var row = 0;
@@ -88,7 +131,7 @@
     return transposedPixels;
   }
     
-  FITS.parsePixels = function (header, data, format) {
+  FITS.parsePixels = function (header, data, format, colorMapping) {
     
     var pixels = [];
     var bzero = header.BZERO || 0.0;
@@ -100,9 +143,10 @@
     var highestPixelValue;
     var meanPixelValue;
     var dataView;
-    var remainingDataBytes = data.length;
+    var remainingDataBytes;
     var imagePixelsNumber = header.NAXIS1 * header.NAXIS2;
     var i = 0;
+    colorMapping = colorMapping || 'linear';
     
     if (!format || !pixelFormats[format]) {
      error('Unknown pixel format');
@@ -116,9 +160,10 @@
       error('No data available in HDU');
     }
     
-    dataView = new FITS.BinaryDataView(data);
+    dataView = new FITS.BinaryDataView(data, false, 0, imagePixelsNumber * pixelSize);
+    remainingDataBytes = dataView.length();
     while(remainingDataBytes){
-      pixelValue = readPixel(dataView, bitpix)*bscale + bzero;        
+      pixelValue = readPixel(dataView, bitpix) * bscale + bzero;        
     
       if(!lowestPixelValue){
         lowestPixelValue = pixelValue;
@@ -144,11 +189,11 @@
     
     // Convert pixels to the specified format
     while (i < imagePixelsNumber) {
-      pixels[i] = pixelFormats["RGBA"].convert(pixels[i], highestPixelValue, lowestPixelValue, meanPixelValue);
+      pixels[i] = pixelFormats["RGBA"].convert(pixels[i], colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue);
       i += 1;
     }
     
-    pixels = transposePixels(pixels, header.NAXIS1, header.NAXIS2); // FITS store pixels in column major order
+    pixels = flipVertical(pixels, header.NAXIS1, header.NAXIS2); // FITS store pixels in column major order
     return pixels;
     
   };

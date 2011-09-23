@@ -15,7 +15,7 @@
     FITS = root.FITS = root.FITS || {};
   }
 
-  FITS.BinaryDataView = function(binaryData, plittleEndian){
+  FITS.BinaryDataView = function(binaryData, plittleEndian, start, offset){
     
     var littleEndian = littleEndian === undefined ? true : littleEndian;
     var dataBuffer;
@@ -41,7 +41,7 @@
       if(!byteOffset){
         byteOffset = bytePointer;
       }
-      data = dataView['get' + type](byteOffset, plittleEndian); 
+      data = dataView['get' + type](byteOffset, plittleEndian);
       bytePointer = byteOffset + dataSize[type];
       return data;
     }
@@ -57,7 +57,6 @@
       bufferLength = binaryString.length;
       dataBuffer = new ArrayBuffer(binaryString.length);
       dataView = new DataView(dataBuffer, 0, bufferLength);
-      //dataView = new Uint8Array(dataBuffer);
       while (i < binaryString.length) {
         character = binaryString.charCodeAt(i);
         byte = character & 0xff;  
@@ -71,8 +70,8 @@
     } else {
       if (binaryData instanceof ArrayBuffer) {
         dataBuffer = binaryData;
-        bufferLength = dataBuffer.length;
-        dataView = new DataView(dataBuffer, 0, bufferLength);
+        bufferLength = offset || dataBuffer.byteLength;
+        dataView = new DataView(dataBuffer, start !== undefined? start: 0, bufferLength);
       }
     }
     
@@ -83,7 +82,8 @@
     this.getUint16 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Uint16'); };    
     this.getUint32 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Uint32'); };    
     this.getFloat32 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Float32'); };    
-    this.getFloat64 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Float64'); };    
+    this.getFloat64 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Float64'); };
+    this.length = function() { return dataView.byteLength; };    
   
   };
 
