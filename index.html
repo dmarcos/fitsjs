@@ -1,1 +1,64 @@
-My GitHub Page
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Simple FITS Loader</title>
+  <link rel="stylesheet" href="/css/main.css" type="text/css">
+</head>
+<body>
+  <div id="logo"></div>
+  <div id="wrapper">
+    <div id="title">FITSJS <span id="slogan">A fits viewer in your browser</span></div>
+    <div id="dropbox">
+    <div id="loadingBar" style="display: none"><img style="height: 19px; width: 107px" alt="dashboard loading" src='./images/loadingBar.gif'></div>  
+    <span id="dropLabel">Drop file here...</span>
+    <canvas id="fitsCanvas" style="display: none"></canvas>
+  </div>
+    <input type="file" onchange="renderFile(this.files[0])" style="display: block; padding-top: 10px"> 
+  </div> 
+</body>
+<script src="/js/fitsParser.js" type="text/javascript"></script>
+<script src="/js/binaryDataView.js" type="text/javascript"></script>
+<script src="/js/fitsPixelParser.js" type="text/javascript"></script>
+<script src="/js/fits.js" type="text/javascript"></script>
+<script>
+   var dropbox = document.getElementById("dropbox");
+   dropbox.addEventListener("dragenter", noopHandler, false);
+   dropbox.addEventListener("dragexit", noopHandler, false);
+   dropbox.addEventListener("dragover", noopHandler, false);
+   dropbox.addEventListener("drop", drop, false);
+ 
+   function noopHandler(evt) {
+     evt.stopPropagation();
+     evt.preventDefault();
+   }
+   
+   function drop(evt) {
+     var files = evt.dataTransfer.files;
+     var count = files.length;
+     evt.stopPropagation();
+     evt.preventDefault();
+     // Only call the handler if 1 or more files was dropped.
+     if (count > 0) {
+       document.getElementById("dropLabel").innerHTML = "Processing " + files[0].name;
+       renderFile(files[0]);
+   	}
+   }
+   
+   var renderSuccess = function(){
+     document.getElementById('dropLabel').style.display = 'none'; 
+     //document.getElementById('loadingBar').style.display = 'none'; 
+     document.getElementById('fitsCanvas').style.display = 'inline-block'; 
+   };
+ 
+   function renderFile(file){
+     var canvas = document.getElementById('fitsCanvas');
+     document.getElementById('dropLabel').innerHTML = 'Loading file...';
+     //document.getElementById('loadingBar').style.display = 'block'; 
+     //canvas.setAttribute('width',this.width);
+     //canvas.setAttribute('height',this.height);
+     //canvas.setAttribute('id',this.id);
+     FITS.renderFile(file, canvas, renderSuccess);
+   }
+</script>
+</html>
