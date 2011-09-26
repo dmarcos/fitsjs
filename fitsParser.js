@@ -161,7 +161,7 @@
     var i = 0;
     while (i < mandatoryKeywordsPrimaryHeader.length) {
       if (header[mandatoryKeywordsPrimaryHeader[i]] === undefined) {
-        error('Keyword ' + keyword + ' not found in primary header');
+        error('Keyword ' + mandatoryKeywordsPrimaryHeader[i] + ' not found in primary header');
       }
       i += 1;
     }
@@ -171,7 +171,7 @@
     var i = 0;
     while (i < mandatoryKeywordsExtensionHeader.length) {
       if (header[mandatoryKeywordsExtensionHeader[i]] === undefined) {
-        error('Keyword ' + keyword + ' not found in primary header');
+        error('Keyword ' + mandatoryKeywordsExtensionHeader[i] + ' not found in primary header');
       }
       i += 1;
     }

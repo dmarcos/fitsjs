@@ -28,7 +28,7 @@
     context.putImageData(image, 0, 0);
   }
   
-  FITS.renderFile = function(file, canvas){
+  FITS.renderFile = function(file, canvas, success){
     var fitsParser = new FITS.FileParser();
     fitsParser.onParsed = function(headerDataUnits){
       var HDUs = headerDataUnits;
@@ -39,6 +39,9 @@
       canvas.setAttribute('height', imageHeight);
       renderImage(canvas, pixels, imageWidth, imageHeight);
       console.log("File read!");
+      if(success){
+        success();
+      }
     }
     var fitsHeader = fitsParser.parse(file);
   }

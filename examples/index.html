@@ -3,31 +3,14 @@
 <head>
   <meta charset="utf-8">
   <title>Simple FITS Loader</title>
-  <style type="text/css">
-    #dropbox{
-      display: inline-block;
-      background-color: #F0EFD1;
-      border-radius: 5px;
-      padding: 10px;
-      border: 2px solid black;
-      -moz-border-radius: 5px;
-      -webkit-border-radius: 5px;
-      text-align: center;
-    }
-    
-    #dropLabel{
-      font: 22px 'Lucida Grande', 'Helvetica Neue', Arial, sans-serif;
-    }
-    
-    #wrapper{      
-      margin: auto; 
-      padding: 10px;
-    }
-  </style>
+  <link rel="stylesheet" href="main.css" type="text/css">
 </head>
 <body>
+  <div id="logo"></div>
   <div id="wrapper">
+    <div id="title">FITSJS <span id="slogan">A fits viewer in your browser</span></div>
     <div id="dropbox">
+    <div id="loadingBar" style="display: none"><img style="height: 19px; width: 107px" alt="dashboard loading" src='./images/loadingBar.gif'></div>  
     <span id="dropLabel">Drop file here...</span>
     <canvas id="fitsCanvas" style="display: none"></canvas>
   </div>
@@ -61,16 +44,21 @@
        renderFile(files[0]);
    	}
    }
+   
+   var renderSuccess = function(){
+     document.getElementById('dropLabel').style.display = 'none'; 
+     //document.getElementById('loadingBar').style.display = 'none'; 
+     document.getElementById('fitsCanvas').style.display = 'inline-block'; 
+   };
  
    function renderFile(file){
      var canvas = document.getElementById('fitsCanvas');
-     var dropLabel = document.getElementById('dropLabel'); 
+     document.getElementById('dropLabel').innerHTML = 'Loading file...';
+     //document.getElementById('loadingBar').style.display = 'block'; 
      //canvas.setAttribute('width',this.width);
      //canvas.setAttribute('height',this.height);
      //canvas.setAttribute('id',this.id);
-     FITS.renderFile(file, canvas);
-     dropLabel.style.display = 'none';
-     canvas.style.display = 'inline-block';
+     FITS.renderFile(file, canvas, renderSuccess);
    }
 </script>
 </html>

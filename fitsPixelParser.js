@@ -62,8 +62,8 @@
   }
   
   var pixelFormats = { 
-    "RGB" : { "size" : 4, "convert" : convertToRGB },
-    "RGBA" : { "size" : 4, "convert" : convertToRGBA }
+    "RGB" : { "components" : 3, "convert" : convertToRGB },
+    "RGBA" : { "components" : 4, "convert" : convertToRGBA }
   };
 
   function readPixel(dataView, bitpix){
@@ -82,7 +82,7 @@
         pixelValue = dataView.getFloat64(0, false);
         break;
       case -32:
-        pixelValue = dataView.getFloat32();
+        pixelValue = dataView.getFloat32(0, false);
         if (pixelValue){
           pixelValue = (1.0 + ((pixelValue & 0x007fffff) / 0x0800000)) * Math.pow(2, ((pixelValue&0x7f800000)>>23) - 127);
         }
@@ -130,10 +130,9 @@
     } 
     return transposedPixels;
   }
-    
+  
   FITS.parsePixels = function (header, data, format, colorMapping) {
     
-    var pixels = [];
     var bzero = header.BZERO || 0.0;
     var bscale = header.BSCALE || 1.0;
     var bitpix = header.BITPIX;
@@ -145,6 +144,7 @@
     var dataView;
     var remainingDataBytes;
     var imagePixelsNumber = header.NAXIS1 * header.NAXIS2;
+    var pixels = [];
     var i = 0;
     colorMapping = colorMapping || 'linear';
     
@@ -165,13 +165,13 @@
     while(remainingDataBytes){
       pixelValue = readPixel(dataView, bitpix) * bscale + bzero;        
     
-      if(!lowestPixelValue){
+      if(lowestPixelValue === undefined){
         lowestPixelValue = pixelValue;
       } else {
         lowestPixelValue = pixelValue < lowestPixelValue? pixelValue : lowestPixelValue;
       }
       
-      if(!highestPixelValue){
+      if(highestPixelValue === undefined){
         highestPixelValue = pixelValue;
       } else {
         highestPixelValue = pixelValue > highestPixelValue? pixelValue : highestPixelValue;
@@ -187,13 +187,12 @@
       remainingDataBytes -= pixelSize;
     }
     
-    // Convert pixels to the specified format
+    pixels = flipVertical(pixels, header.NAXIS1, header.NAXIS2); // FITS stores pixels in column major order
+  
     while (i < imagePixelsNumber) {
       pixels[i] = pixelFormats["RGBA"].convert(pixels[i], colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue);
       i += 1;
-    }
-    
-    pixels = flipVertical(pixels, header.NAXIS1, header.NAXIS2); // FITS store pixels in column major order
+    }  
     return pixels;
     
   };
