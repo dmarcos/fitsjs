@@ -2,7 +2,7 @@ body{
   background-color: #e8e8e2; 
   background-attachment: scroll, scroll;
   background-clip: border-box, border-box;
-  background-image: url(/fitsjs/images/background.png), none;
+  background-image: url(/images/background.png), none;
   background-origin: padding-box, padding-box; 
   font-family: "Helvetica Neue",Helvetica,Arial,serif;
   font-size: 20px;
@@ -30,7 +30,7 @@ input{
  position: absolute;
  top: 0px;
  left: 0px;
- background-image: url(/fitsjs/images/logo.png);
+ background-image: url(/images/logo.png);
  width: 481px;
  height: 282px;
  z-index: -1; 
