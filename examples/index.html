@@ -10,10 +10,10 @@
   <div id="wrapper">
     <div id="title">FITSJS <span id="slogan">A fits viewer in your browser</span></div>
     <div id="dropbox">
-    <div id="loadingBar" style="display: none"><img style="height: 19px; width: 107px" alt="dashboard loading" src='./images/loadingBar.gif'></div>  
-    <span id="dropLabel">Drop file here...</span>
-    <canvas id="fitsCanvas" style="display: none" width="800" height="600"></canvas>
-  </div>
+      <canvas id="fitsCanvas" style="display: none" width="800" height="600"></canvas>
+      <div id="loadingBar" style="display: none"><img style="height: 19px; width: 107px" alt="dashboard loading" src='./images/loadingBar.gif'></div>  
+      <span id="dropLabel">Drop file here...</span>
+    </div>
     <input type="file" onchange="renderFile(this.files[0])" style="display: block; padding-top: 10px"> 
   </div> 
 </body>
@@ -48,8 +48,8 @@
    var renderSuccess = function(){
      document.getElementById('dropLabel').style.display = 'none'; 
      //document.getElementById('loadingBar').style.display = 'none'; 
-     document.getElementById('fitsCanvas').style.display = 'inline-block'; 
-   };
+     document.getElementById('fitsCanvas').style.display = 'inline-block';
+  };
  
    function renderFile(file){
      var canvas = document.getElementById('fitsCanvas');

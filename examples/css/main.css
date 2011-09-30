@@ -11,6 +11,11 @@ body{
   color: black; 
 }
 
+canvas { 
+  cursor: pointer; 
+  -webkit-user-select: none;
+}
+
 input{
   font-size: 20px;
 }
