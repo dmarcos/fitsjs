@@ -46,6 +46,8 @@ input{
   background-color: #F0EFD1;
   border-radius: 5px;
   padding: 10px;
+  width: 800px;
+  height: 600px;
   border: 2px solid black;
   -moz-border-radius: 5px;
   -webkit-border-radius: 5px;
@@ -53,11 +55,13 @@ input{
 }
 
 #dropLabel{
+  display: inline-block;
+  margin-top: 200px;
   font: 22px 'Lucida Grande', 'Helvetica Neue', Arial, sans-serif;
 }
 
-#wrapper{      
+#wrapper{ 
+  width: 800px;     
   margin: auto; 
-  width: 100%;
   padding: 10px;
 }

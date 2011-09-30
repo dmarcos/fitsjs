@@ -13,15 +13,17 @@
   }
   
   var offScreenCanvas;
-  var onScreenCanvas;
   var offScreenContext;
-  var offScreenWidth;
-  var offScreenHeight;
+  var offScreenCanvasWidth;
+  var offScreenCanvasHeight;
+  var onScreenCanvas;
   var onScreenContext;
+  var onScreenCanvasWidth;
+  var onScreenCanvasHeight;
   var viewportPosition = { x : 0, y : 0 };
-  var lastScrollPosition = {};
   var viewportWidth;
   var viewportHeight;
+  var lastScrollPosition = {};
   var mouseDown = false;
   var zoomFactor = 1;
   
@@ -29,8 +31,7 @@
     var context = canvas.getContext("2d");
     var image = context.createImageData(canvas.getAttribute('width'), canvas.getAttribute('height'));
     var pixelIndex = 0;
-    var currentPixel;
-    
+    var currentPixel; 
     while (pixelIndex < pixels.length) {
       currentPixel = pixels[pixelIndex]; 
       image.data[pixelIndex*4] = currentPixel.red;
@@ -42,12 +43,32 @@
     context.putImageData(image, 0, 0);
   }
   
+  function centerViewport(scaleFactor, zoomIn){
+    var newX = viewportWidth / scaleFactor; 
+    var newY = viewportHeight / scaleFactor;
+    if (!zoomIn) {
+      newX = -newX;
+      newY = -newY;
+    }
+    newX = viewportPosition.x + newX / 2; 
+    newY = viewportPosition.y + newY / 2; 
+    if (newX < 0 || newY < 0) {
+      return;
+    }
+    viewportPosition.x = newX, 
+    viewportPosition.y = newY;
+  }
+
+  function scaleViewport(zoomFactor){
+    viewportWidth = onScreenCanvasWidth / zoomFactor;
+    viewportHeight = onScreenCanvasHeight / zoomFactor;
+  }
+  
   function draw(){
     // onScreenContext.putImageData(offScreenCanvas.getImageData(viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight), 0, 0);
-    var widthClip = offScreenWidth >= viewportWidth? viewportWidth : offScreenWidth;
-    var heightClip = offScreenHeight >= viewportHeight? viewportHeight : offScreenHeight;
-    onScreenContext.clearRect(0, 0, viewportWidth, viewportHeight) 
-    onScreenContext.drawImage(offScreenCanvas, viewportPosition.x, viewportPosition.y, widthClip / zoomFactor, heightClip / zoomFactor, 0, 0, widthClip, heightClip);
+    scaleViewport(zoomFactor); 
+    onScreenContext.clearRect(0, 0, viewportWidth, viewportHeight);
+    onScreenContext.drawImage(offScreenCanvas, viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight, 0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
   }
   
   function mouseMoved(event){
@@ -61,13 +82,13 @@
       scrollVector.x = lastScrollPosition.x - mousePosition.x; 
       scrollVector.y = lastScrollPosition.y - mousePosition.y;
       if (viewportPosition.x + scrollVector.x >= 0 && 
-          viewportPosition.x + scrollVector.x + viewportWidth <= offScreenWidth ) {
+          viewportPosition.x + scrollVector.x + viewportWidth <= offScreenCanvasWidth ) {
             viewportPosition.x = viewportPosition.x + scrollVector.x / zoomFactor;
             lastScrollPosition.x = mousePosition.x;
       }
           
       if(viewportPosition.y + scrollVector.y >= 0 && 
-         viewportPosition.y + scrollVector.y + viewportHeight <= offScreenHeight ) {
+         viewportPosition.y + scrollVector.y + viewportHeight <= offScreenCanvasHeight ) {
            viewportPosition.y = viewportPosition.y + scrollVector.y / zoomFactor;
            lastScrollPosition.y = mousePosition.y;
       }
@@ -92,7 +113,9 @@
   var wheelMoved = function (event){
     var wheel = event.wheelDelta/120;//n or -n
     var newZoomFactor = wheel > 0? zoomFactor*2 : zoomFactor/2;
-    if (newZoomFactor >= 1) {
+    if (newZoomFactor >= 1 && newZoomFactor < zoomFactor || // Zoom out
+        newZoomFactor > zoomFactor && viewportHeight >= 2 && viewportWidth >= 2) { // Zoom In
+      centerViewport(newZoomFactor, newZoomFactor > zoomFactor);    
       zoomFactor = newZoomFactor; 
       draw();
     }
@@ -122,8 +145,12 @@
       var imageHeight = HDUs[0].header.NAXIS2;
       offScreenCanvas.setAttribute('width', imageWidth);
       offScreenCanvas.setAttribute('height', imageHeight);
-      offScreenWidth = imageWidth;
-      offScreenHeight = imageHeight;
+      offScreenCanvasWidth = imageWidth;
+      offScreenCanvasHeight = imageHeight;
+      viewportWidth = offScreenCanvasWidth >= viewportWidth? viewportWidth : offScreenCanvasWidth;
+      viewportHeight = offScreenCanvasHeight >= viewportHeight? viewportHeight : offScreenCanvasHeight;
+      onScreenCanvasWidth = viewportWidth;
+      onScreenCanvasHeight = viewportHeight;
       renderPixels(pixels, offScreenCanvas);
       draw();
       console.log("File read!");
