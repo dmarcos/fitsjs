@@ -44,8 +44,10 @@
   }
   
   function centerViewport(scaleFactor, zoomIn){
-    var newX = viewportWidth / scaleFactor; 
-    var newY = viewportHeight / scaleFactor;
+    var scaledViewportWidth = zoomIn? onScreenCanvasWidth / scaleFactor : viewportWidth;
+    var scaledViewportHeight = zoomIn? onScreenCanvasHeight / scaleFactor : viewportHeight;
+    var newX = scaledViewportWidth; 
+    var newY = scaledViewportHeight;
     if (!zoomIn) {
       newX = -newX;
       newY = -newY;
