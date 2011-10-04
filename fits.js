@@ -43,11 +43,11 @@
     context.putImageData(image, 0, 0);
   }
   
-  function centerViewport(scaleFactor, zoomIn){
+  function centerViewport(scaleFactor, zoomIn, cursorX, cursorY){
     var scaledViewportWidth = zoomIn? onScreenCanvasWidth / scaleFactor : viewportWidth;
     var scaledViewportHeight = zoomIn? onScreenCanvasHeight / scaleFactor : viewportHeight;
-    var newX = scaledViewportWidth; 
-    var newY = scaledViewportHeight;
+    var newX = zoomIn? (cursorX / (scaleFactor / 2)) : cursorX / scaleFactor; 
+    var newY = zoomIn? (cursorY / (scaleFactor / 2)) : cursorY / scaleFactor; 
     if (!zoomIn) {
       newX = -newX;
       newY = -newY;
@@ -69,7 +69,7 @@
   function draw(){
     // onScreenContext.putImageData(offScreenCanvas.getImageData(viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight), 0, 0);
     scaleViewport(zoomFactor); 
-    onScreenContext.clearRect(0, 0, viewportWidth, viewportHeight);
+    onScreenContext.clearRect(0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
     onScreenContext.drawImage(offScreenCanvas, viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight, 0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
   }
   
@@ -102,35 +102,37 @@
     mouseDown = true;
     lastScrollPosition.x = event.layerX || event.offsetX;
     lastScrollPosition.y = event.layerY || event.offsetY;
-  }
+  };
   
   var buttonReleased = function(){
     mouseDown = false;
-  }
+  };
   
   var mouseOut = function(){
     mouseDown = false;
-  }
+  };
   
   var wheelMoved = function (event){
     var wheel = event.wheelDelta/120;//n or -n
     var newZoomFactor = wheel > 0? zoomFactor*2 : zoomFactor/2;
     if (newZoomFactor >= 1 && newZoomFactor < zoomFactor || // Zoom out
         newZoomFactor > zoomFactor && viewportHeight >= 2 && viewportWidth >= 2) { // Zoom In
-      centerViewport(newZoomFactor, newZoomFactor > zoomFactor);    
+      centerViewport(newZoomFactor, newZoomFactor > zoomFactor, event.offsetX, event.offsetY);    
       zoomFactor = newZoomFactor; 
       draw();
     }
-  }
+  };
   
   FITS.renderFile = function(file, canvas, success){
     var fitsParser = new FITS.FileParser();
+    var canvasContext = canvas.getContext('2d');
     
     canvas.onmousedown = buttonPressed;
     canvas.onmouseup = buttonReleased;
     canvas.addEventListener('mousemove', mouseMoved, false);
     canvas.addEventListener('mouseout', mouseOut, false);
     canvas.addEventListener('mousewheel', wheelMoved, false);
+    canvasContext.clearRect(0, 0, parseInt(canvas.getAttribute('width')), parseInt(canvas.getAttribute('height')));
 
     offScreenCanvas = document.createElement('canvas');
     onScreenCanvas = canvas;
@@ -139,6 +141,8 @@
     onScreenCanvas.onselectstart = function () { return false; } // ie 
     viewportWidth = parseInt(canvas.getAttribute('width'));
     viewportHeight = parseInt(canvas.getAttribute('height'));
+
+    zoomFactor = 1;
     
     fitsParser.onParsed = function(headerDataUnits){
       var HDUs = headerDataUnits;
@@ -161,6 +165,6 @@
       }
     }
     var fitsHeader = fitsParser.parse(file);
-  }
+  };
   
 }).call(this);
