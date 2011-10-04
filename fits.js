@@ -16,13 +16,16 @@
   var offScreenContext;
   var offScreenCanvasWidth;
   var offScreenCanvasHeight;
+
   var onScreenCanvas;
   var onScreenContext;
   var onScreenCanvasWidth;
   var onScreenCanvasHeight;
+
   var viewportPosition = { x : 0, y : 0 };
   var viewportWidth;
   var viewportHeight;
+  
   var lastScrollPosition = {};
   var mouseDown = false;
   var zoomFactor = 1;
@@ -44,21 +47,19 @@
   }
   
   function centerViewport(scaleFactor, zoomIn, cursorX, cursorY){
-    var scaledViewportWidth = zoomIn? onScreenCanvasWidth / scaleFactor : viewportWidth;
-    var scaledViewportHeight = zoomIn? onScreenCanvasHeight / scaleFactor : viewportHeight;
-    var newX = zoomIn? (cursorX / (scaleFactor / 2)) : cursorX / scaleFactor; 
-    var newY = zoomIn? (cursorY / (scaleFactor / 2)) : cursorY / scaleFactor; 
-    if (!zoomIn) {
-      newX = -newX;
-      newY = -newY;
-    }
-    newX = viewportPosition.x + newX / 2; 
-    newY = viewportPosition.y + newY / 2; 
-    if (newX < 0 || newY < 0) {
+    var newPositionX;
+    var newPositionY;
+    var translationX = cursorX / scaleFactor;
+    var translationY = cursorY / scaleFactor;
+    var dx = zoomIn? translationX : - translationX / 2; 
+    var dy = zoomIn? translationY : - translationY / 2; 
+    newPositionX = viewportPosition.x + dx; 
+    newPositionY = viewportPosition.y + dy; 
+    if (newPositionX < 0 || newPositionY < 0) {
       return;
     }
-    viewportPosition.x = newX, 
-    viewportPosition.y = newY;
+    viewportPosition.x = newPositionX, 
+    viewportPosition.y = newPositionY;
   }
 
   function scaleViewport(zoomFactor){
@@ -111,16 +112,27 @@
   var mouseOut = function(){
     mouseDown = false;
   };
-  
-  var wheelMoved = function (event){
-    var wheel = event.wheelDelta/120;//n or -n
-    var newZoomFactor = wheel > 0? zoomFactor*2 : zoomFactor/2;
+
+  var zoom = function(newZoomFactor, mouseX, mouseY){
     if (newZoomFactor >= 1 && newZoomFactor < zoomFactor || // Zoom out
         newZoomFactor > zoomFactor && viewportHeight >= 2 && viewportWidth >= 2) { // Zoom In
-      centerViewport(newZoomFactor, newZoomFactor > zoomFactor, event.offsetX, event.offsetY);    
+      centerViewport(newZoomFactor, newZoomFactor > zoomFactor, mouseX, mouseY);    
       zoomFactor = newZoomFactor; 
       draw();
     }
+  };
+
+  var doubleClick = function (event) {
+    zoomIn(event.offsetX, event.offsetY);
+  };
+
+  var zoomIn = function(mouseX, mouseY) {
+    zoom(zoomFactor*2, mouseX, mouseY);
+  };
+  
+  var wheelMoved = function (event){
+    var wheel = event.wheelDelta/120;//n or -n
+    zoom(wheel > 0? zoomFactor*2 : zoomFactor/2, event.offsetX, event.offsetY);
   };
   
   FITS.renderFile = function(file, canvas, success){
@@ -132,6 +144,8 @@
     canvas.addEventListener('mousemove', mouseMoved, false);
     canvas.addEventListener('mouseout', mouseOut, false);
     canvas.addEventListener('mousewheel', wheelMoved, false);
+    canvas.ondblclick = doubleClick;
+
     canvasContext.clearRect(0, 0, parseInt(canvas.getAttribute('width')), parseInt(canvas.getAttribute('height')));
 
     offScreenCanvas = document.createElement('canvas');
