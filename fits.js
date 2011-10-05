@@ -53,7 +53,7 @@
   function cursorToPixel(cursorX, cursorY){
     var viewportPixelX = Math.floor(cursorX / zoomFactor);
     var viewportPixelY = Math.floor(cursorY / zoomFactor);
-    var xCoordinate = Math.floor(viewportPosition.x) + viewportPixelX;
+    var xCoordinate = Math.ceil(viewportPosition.x) + viewportPixelX;
     var yCoordinate = Math.floor(viewportPosition.y) + viewportPixelY;
     return {
       "x" : xCoordinate,
