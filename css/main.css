@@ -54,6 +54,12 @@ input{
   text-align: center;
 }
 
+#infobox{
+  height: 600px;
+  width: 340px;
+  float: right;
+}
+
 #dropLabel{
   display: inline-block;
   margin-top: 200px;
@@ -61,7 +67,7 @@ input{
 }
 
 #wrapper{ 
-  width: 800px;     
+  width: 1200px;     
   margin: auto; 
   padding: 10px;
 }
