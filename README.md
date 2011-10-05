@@ -1,4 +1,4 @@
-JavaScript FITS files reader
+JavaScript FITS files reader - fitsjs.org
 
 26 July 2011
 
