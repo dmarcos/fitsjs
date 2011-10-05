@@ -53,7 +53,7 @@
       "red" : colorValue,
       "green" : colorValue,
       "blue" : colorValue,
-      "alpha" : 255
+      "alpha" : 255,
     }
   }
   
@@ -73,10 +73,10 @@
         pixelValue = dataView.getUint8();
         break;
       case 16:
-        pixelValue = dataView.getUint16(0, false);
+        pixelValue = dataView.getInt16(0, false);
         break;
       case 32:
-        pixelValue = dataView.getUint32(0, false);
+        pixelValue = dataView.getInt32(0, false);
         break;
       case 64:
         pixelValue = dataView.getFloat64(0, false);
@@ -145,6 +145,7 @@
     var remainingDataBytes;
     var imagePixelsNumber = header.NAXIS1 * header.NAXIS2;
     var pixels = [];
+    var mappedPixel;
     var i = 0;
     colorMapping = colorMapping || 'linear';
     
@@ -190,7 +191,9 @@
     pixels = flipVertical(pixels, header.NAXIS1, header.NAXIS2); // FITS stores pixels in column major order
   
     while (i < imagePixelsNumber) {
-      pixels[i] = pixelFormats["RGBA"].convert(pixels[i], colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue);
+      mappedPixel = pixelFormats["RGBA"].convert(pixels[i], colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue);
+      mappedPixel.value = pixels[i];
+      pixels[i] = mappedPixel;
       i += 1;
     }  
     return pixels;

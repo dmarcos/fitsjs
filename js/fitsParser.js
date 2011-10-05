@@ -41,7 +41,7 @@
     "naxis" : /^NAXIS\d{1,3}$/,
   };
   
-  function validateLogical(value, error) {
+  function validateLogical(value, error){
     if (value) {
       if (!expressions.logical.test(value)) {
         error('Logical value: ' + value + 'not valid. Must be T or F');
@@ -51,7 +51,7 @@
     return value === 'T'? true : false;
   }
   
-  function validateDate(value, error) {
+  function validateDate(value, error){
     if (value) {  
       value = value.replace(/\x27/g, ''); // Removing enclosing quotes.
       if (!expressions['date'].test(value)) {
