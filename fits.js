@@ -25,25 +25,38 @@
   var viewportPosition = { x : 0, y : 0 };
   var viewportWidth;
   var viewportHeight;
-  
+
   var lastScrollPosition = {};
   var mouseDown = false;
   var zoomFactor = 1;
+
+  var pixelValues = [];
   
   function renderPixels(pixels, canvas){
     var context = canvas.getContext("2d");
     var image = context.createImageData(canvas.getAttribute('width'), canvas.getAttribute('height'));
     var pixelIndex = 0;
     var currentPixel; 
+    pixelValues = [];
     while (pixelIndex < pixels.length) {
       currentPixel = pixels[pixelIndex]; 
       image.data[pixelIndex*4] = currentPixel.red;
       image.data[pixelIndex*4 + 1] = currentPixel.green;
       image.data[pixelIndex*4 + 2] = currentPixel.blue;
       image.data[pixelIndex*4 + 3] = currentPixel.alpha;
+      pixelValues.push(currentPixel.value);
       pixelIndex += 1;
     }
     context.putImageData(image, 0, 0);
+  }
+
+  function cursorToPixel(cursorX, cursorY){
+    var viewportPixelX = cursorX / zoomFactor;
+    var viewportPixelY = cursorY / zoomFactor;
+    return {
+      "x" : Math.round(viewportPosition.x + viewportPixelX),
+      "y" : Math.round(viewportPosition.y + viewportPixelY)
+    };
   }
   
   function centerViewport(scaleFactor, zoomIn, cursorX, cursorY){
@@ -51,10 +64,10 @@
     var newPositionY;
     var translationX = cursorX / scaleFactor;
     var translationY = cursorY / scaleFactor;
-    var dx = zoomIn? translationX : - translationX / 2; 
-    var dy = zoomIn? translationY : - translationY / 2; 
-    newPositionX = viewportPosition.x + dx; 
-    newPositionY = viewportPosition.y + dy; 
+    var xOffset = zoomIn? translationX : - translationX / 2; 
+    var yOffset = zoomIn? translationY : - translationY / 2; 
+    newPositionX = viewportPosition.x + xOffset; 
+    newPositionY = viewportPosition.y + yOffset; 
     if (newPositionX < 0 || newPositionY < 0) {
       return;
     }
@@ -77,6 +90,7 @@
   function mouseMoved(event){
     var scrollVector;
     var mousePosition;
+    FITS.onPixelChanged(cursorToPixel(event.offsetX, event.offsetY));
     if (mouseDown) {
       scrollVector = {};
       mousePosition = {};
@@ -133,6 +147,10 @@
   var wheelMoved = function (event){
     var wheel = event.wheelDelta/120;//n or -n
     zoom(wheel > 0? zoomFactor*2 : zoomFactor/2, event.offsetX, event.offsetY);
+  };
+
+  FITS.onPixelChanged = function(pixelInfo) {
+    console.log("Pixel: " + pixelInfo.x + " " + pixelInfo.y + " " + pixelValues[pixelInfo.x + pixelInfo.y*offScreenCanvasHeight]);  
   };
   
   FITS.renderFile = function(file, canvas, success){
