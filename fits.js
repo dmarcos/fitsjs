@@ -53,9 +53,12 @@
   function cursorToPixel(cursorX, cursorY){
     var viewportPixelX = cursorX / zoomFactor;
     var viewportPixelY = cursorY / zoomFactor;
+    var xCoordinate = Math.round(viewportPosition.x + viewportPixelX);
+    var yCoordinate = Math.round(viewportPosition.y + viewportPixelY);
     return {
-      "x" : Math.round(viewportPosition.x + viewportPixelX),
-      "y" : Math.round(viewportPosition.y + viewportPixelY)
+      "x" : xCoordinate,
+      "y" : yCoordinate,
+      "value" : pixelValues[xCoordinate + yCoordinate*offScreenCanvasHeight]
     };
   }
   
@@ -90,7 +93,7 @@
   function mouseMoved(event){
     var scrollVector;
     var mousePosition;
-    FITS.onPixelChanged(cursorToPixel(event.offsetX, event.offsetY));
+    FITS.onHoverPixelChanged(cursorToPixel(event.offsetX, event.offsetY));
     if (mouseDown) {
       scrollVector = {};
       mousePosition = {};
@@ -149,8 +152,8 @@
     zoom(wheel > 0? zoomFactor*2 : zoomFactor/2, event.offsetX, event.offsetY);
   };
 
-  FITS.onPixelChanged = function(pixelInfo) {
-    console.log("Pixel: " + pixelInfo.x + " " + pixelInfo.y + " " + pixelValues[pixelInfo.x + pixelInfo.y*offScreenCanvasHeight]);  
+  FITS.onHoverPixelChanged = function(pixelInfo) {
+    console.log("Pixel: " + pixelInfo.x + " " + pixelInfo.y + " " + pixelInfo.value);  
   };
   
   FITS.renderFile = function(file, canvas, success){
