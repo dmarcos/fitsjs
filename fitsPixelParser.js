@@ -83,10 +83,10 @@
         break;
       case -32:
         pixelValue = dataView.getFloat32(0, false);
-        if (pixelValue){
-          pixelValue = (1.0 + ((pixelValue & 0x007fffff) / 0x0800000)) * Math.pow(2, ((pixelValue&0x7f800000)>>23) - 127);
-        }
-        pixelValue = Math.abs(pixelValue);	
+        //if (pixelValue){
+        //  pixelValue = (1.0 + ((pixelValue & 0x007fffff) / 0x0800000)) * Math.pow(2, ((pixelValue&0x7f800000)>>23) - 127);
+        //}
+        //pixelValue = Math.abs(pixelValue);	
         break;
       case -64:
         pixelValue = dataView.getFloat64(0, false);
