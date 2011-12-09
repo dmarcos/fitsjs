@@ -123,10 +123,10 @@
     scaleViewport(zoomFactor); 
     onScreenContext.clearRect(0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
     onScreenContext.drawImage(offScreenCanvas, viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight, 0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
-    if (highLightedPixel) {
-      onScreenContext.fillStyle = "rgba(255, 0, 0, 0.5)"; 
-      onScreenContext.fillRect(highLightedPixel.x, highLightedPixel.y, highLightedPixel.size, highLightedPixel.size);
-    }
+    //if (highLightedPixel) {
+    //  onScreenContext.fillStyle = "rgba(255, 0, 0, 0.5)"; 
+    //  onScreenContext.fillRect(highLightedPixel.x, highLightedPixel.y, highLightedPixel.size, highLightedPixel.size);
+    //}
   }
 
   function highlightPixel(mouseX, mouseY){

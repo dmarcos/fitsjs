@@ -31,6 +31,8 @@
   var zoomFactor = 1;
 
   var pixelValues = [];
+
+  var highLightedPixel;
   
   function renderPixels(pixels, canvas){
     var context = canvas.getContext("2d");
@@ -55,11 +57,23 @@
     var viewportPixelY = cursorY / zoomFactor;
     var xCoordinate = Math.floor(viewportPosition.x + viewportPixelX);
     var yCoordinate = Math.floor(viewportPosition.y + viewportPixelY);
-    return {
+    var raDec;
+    var cursorInfo = {
       "x" : xCoordinate,
       "y" : yCoordinate,
       "value" : pixelValues[xCoordinate + yCoordinate*offScreenCanvasHeight]
     };
+    if (FITS.wcsMapper) {
+      raDec = FITS.wcsMapper.pixelToCoordinate(xCoordinate, yCoordinate);
+      cursorInfo.ra = raDec.ra;
+      cursorInfo.dec = raDec.dec;
+    }
+    return cursorInfo
+  }
+
+  function coordinateToCanvasPixel(x,y){
+    var imageCoordinates = cursorToPixel(x, y);
+    var viewportCoordinates = cursorToPixel(x, y);
   }
   
   function centerViewport(scaleFactor, zoomIn, cursorX, cursorY){
@@ -82,18 +96,53 @@
     viewportWidth = onScreenCanvasWidth / zoomFactor;
     viewportHeight = onScreenCanvasHeight / zoomFactor;
   }
+
+  function copyPixels(){
+    var zoomedImage = onScreenContext.createImageData(onScreenCanvasWidth, onScreenCanvasHeight);
+    var viewportImage = onScreenContext.getImageData(viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight);
+    var row = 0;
+    var column = 0;
+    var copied = 0;
+    while (row < viewportImage.width) {
+      while (column < viewportImage.height) {
+        while (copiedRows < zoomFactor){
+          zoomedImage[row*viewportWidth + column + copied] = viewportImage.data[row*viewportWidth + column];
+          zoomedImage[row*viewportWidth + column + copied + 1] = viewportImage.data[row*viewportWidth + column + 1];
+          zoomedImage[row*viewportWidth + column + copied + 2] = viewportImage.data[row*viewportWidth + column + 2];
+          zoomedImage[row*viewportWidth + column + copied + 3] = viewportImage.data[row*viewportWidth + columnc + 3];
+        }
+
+
+      }
+      row += 1;
+    }
+  }
   
   function draw(){
     // onScreenContext.putImageData(offScreenCanvas.getImageData(viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight), 0, 0);
     scaleViewport(zoomFactor); 
     onScreenContext.clearRect(0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
     onScreenContext.drawImage(offScreenCanvas, viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight, 0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
+    //if (highLightedPixel) {
+    //  onScreenContext.fillStyle = "rgba(255, 0, 0, 0.5)"; 
+    //  onScreenContext.fillRect(highLightedPixel.x, highLightedPixel.y, highLightedPixel.size, highLightedPixel.size);
+    //}
+  }
+
+  function highlightPixel(mouseX, mouseY){
+    var xCoordinate = Math.floor(mouseX / zoomFactor);
+    var yCoordinate = Math.floor(mouseY / zoomFactor);
+    var size = zoomFactor;
+    highLightedPixel = {
+      "x" : xCoordinate,
+      "y" : yCoordinate,
+      "size" : size
+    };
   }
   
   function mouseMoved(event){
     var scrollVector;
     var mousePosition;
-    FITS.onHoverPixelChanged(cursorToPixel(event.offsetX, event.offsetY));
     if (mouseDown) {
       scrollVector = {};
       mousePosition = {};
@@ -114,6 +163,8 @@
       }
       draw();
     }
+    FITS.onHoverPixelChanged(cursorToPixel(event.offsetX, event.offsetY));
+    //highlightPixel(event.offsetX, event.offsetY);
   }
   
   var buttonPressed = function(event){
@@ -135,6 +186,7 @@
         newZoomFactor > zoomFactor && viewportHeight >= 2 && viewportWidth >= 2) { // Zoom In
       centerViewport(newZoomFactor, newZoomFactor > zoomFactor, mouseX, mouseY);    
       zoomFactor = newZoomFactor; 
+      highlightPixel(event.offsetX, event.offsetY);
       draw();
     }
   };
@@ -158,7 +210,6 @@
   
   FITS.renderFile = function(file, canvas, success){
     var fitsParser = new FITS.FileParser();
-    var canvasContext = canvas.getContext('2d');
     
     canvas.onmousedown = buttonPressed;
     canvas.onmouseup = buttonReleased;
@@ -167,21 +218,27 @@
     canvas.addEventListener('mousewheel', wheelMoved, false);
     canvas.ondblclick = doubleClick;
 
-    canvasContext.clearRect(0, 0, parseInt(canvas.getAttribute('width')), parseInt(canvas.getAttribute('height')));
-
     offScreenCanvas = document.createElement('canvas');
+    offScreenContext = offScreenCanvas.getContext('2d');
+
     onScreenCanvas = canvas;
     onScreenContext = onScreenCanvas.getContext('2d');
-    offScreenContext = offScreenCanvas.getContext('2d');
+    viewportWidth = parseInt(onScreenCanvas.getAttribute('width'));
+    viewportHeight = parseInt(onScreenCanvas.getAttribute('height'));
+    onScreenContext.clearRect(0, 0, viewportWidth, viewportHeight);
+    onScreenCanvas.style.width = viewportWidth + 'px';
+    onScreenCanvas.style.height = viewportHeight + 'px';
+
     onScreenCanvas.onselectstart = function () { return false; } // ie 
-    viewportWidth = parseInt(canvas.getAttribute('width'));
-    viewportHeight = parseInt(canvas.getAttribute('height'));
 
     zoomFactor = 1;
     
     fitsParser.onParsed = function(headerDataUnits){
       var HDUs = headerDataUnits;
       var pixels = FITS.parsePixels(HDUs[0].header, HDUs[0].data, 'RGBA', 'linear');
+      if (FITS.WCS) {
+        FITS.wcsMapper = new FITS.WCS(HDUs[0].header);
+      }
       var imageWidth = HDUs[0].header.NAXIS1;
       var imageHeight = HDUs[0].header.NAXIS2;
       offScreenCanvas.setAttribute('width', imageWidth);
