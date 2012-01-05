@@ -135,7 +135,7 @@ define(function (require) {
   var onHoverPixelChanged = function(pixelInfo) {
     console.log("Pixel: " + pixelInfo.x + " " + pixelInfo.y + " " + pixelInfo.value);  
   };
-  
+
   var mouseMoved = function(event){
     var scrollVector;
     var mousePosition;
@@ -215,8 +215,8 @@ define(function (require) {
 
     onScreenCanvas = canvas;
     onScreenContext = onScreenCanvas.getContext('2d');
-    viewportWidth = parseInt(onScreenCanvas.getAttribute('width'));
-    viewportHeight = parseInt(onScreenCanvas.getAttribute('height'));
+    viewportWidth = parseInt(onScreenCanvas.getAttribute('width'), 10);
+    viewportHeight = parseInt(onScreenCanvas.getAttribute('height'), 10);
     onScreenContext.clearRect(0, 0, viewportWidth, viewportHeight);
     onScreenCanvas.style.width = viewportWidth + 'px';
     onScreenCanvas.style.height = viewportHeight + 'px';
