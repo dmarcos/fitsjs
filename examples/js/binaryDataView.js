@@ -2,20 +2,9 @@
 // Author: Diego Marcos
 // Email: diego.marcos@gmail.com
 
-(function () {
+define(function () {
 
-  // Save a reference to the global object.
-   var root = this;
-
-  // The top-level namespace. Exported for both CommonJS and the browser.
-  var FITS;
-  if (typeof exports !== 'undefined') {
-    FITS = exports;
-  } else {
-    FITS = root.FITS = root.FITS || {};
-  }
-
-  FITS.BinaryDataView = function(binaryData, plittleEndian, start, offset){
+  var BinaryDataView = function(binaryData, plittleEndian, start, offset){
     
     var littleEndian = littleEndian === undefined ? true : littleEndian;
     var dataBuffer;
@@ -24,13 +13,13 @@
     var bufferLength;
     var dataSize = {
       'Int8': 1,
-    	'Int16': 2,
-    	'Int32': 4,
-    	'Uint8': 1,
-    	'Uint16': 2,
-    	'Uint32': 4,
-    	'Float32': 4,
-    	'Float64': 8
+      'Int16': 2,
+      'Int32': 4,
+      'Uint8': 1,
+      'Uint16': 2,
+      'Uint32': 4,
+      'Float32': 4,
+      'Float64': 8
     };
     
     var dataGetter = function(byteOffset, plittleEndian, type){
@@ -44,7 +33,7 @@
       data = dataView['get' + type](byteOffset, plittleEndian);
       bytePointer = byteOffset + dataSize[type];
       return data;
-    }
+    };
     
     if (!window.ArrayBuffer || !window.DataView) {
       throw new Error('The ArrayBuffer and DataView APIs are not supported in your browser.');
@@ -66,7 +55,7 @@
     }
     
     if (typeof binaryData === 'string') {
-      parseBinaryString(binaryData)
+      parseBinaryString(binaryData);
     } else {
       if (binaryData instanceof ArrayBuffer) {
         dataBuffer = binaryData;
@@ -75,9 +64,9 @@
       }
     }
     
-    this.getInt8 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Int8') };
-    this.getInt16 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Int16') };
-    this.getInt32 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Int32') };
+    this.getInt8 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Int8'); };
+    this.getInt16 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Int16'); };
+    this.getInt32 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Int32'); };
     this.getUint8 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Uint8'); };    
     this.getUint16 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Uint16'); };    
     this.getUint32 = function(byteOffset, littleEndian) { return dataGetter(byteOffset, littleEndian, 'Uint32'); };    
@@ -87,4 +76,6 @@
   
   };
 
-}).call(this);
+  return BinaryDataView;
+
+});

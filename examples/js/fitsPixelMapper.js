@@ -5,25 +5,14 @@
 // FITS images have arbitrary pixel values. Cameras count individual photons
 // Highest pixel value is the brightest and lowest value the faintest
 
-(function () {
+define(['./binaryDataView'], function (BinaryDataView) {
   "use strict";
-
-  // Save a reference to the global object.
-  var root = this;
-
-  // The top-level namespace. Exported for both CommonJS and the browser.
-  var FITS;
-  if (typeof exports !== 'undefined') {
-    FITS = exports;
-  } else {
-    FITS = root.FITS = root.FITS || {};
-  }
   
-  function mapPixel(pixelValue, colorMapping, maxColorValue, highestPixelValue, lowestPixelValue, meanPixelValue){
+  var mapPixel = function(pixelValue, colorMapping, maxColorValue, highestPixelValue, lowestPixelValue, meanPixelValue) {
     var mappedValue;
     var valuesRange = highestPixelValue - lowestPixelValue;
     switch (colorMapping) { 
-      case 'linear' :
+        case 'linear' :
         mappedValue = maxColorValue * ((pixelValue - lowestPixelValue) / valuesRange );
         break;
       case 'sqrt' :
@@ -43,30 +32,30 @@
         break;
       default:
         break;
-  	}
-  	return mappedValue;
-  }
+    }
+    return mappedValue;
+  };
 
-  function convertToRGBA(pixelValue, colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue){
+  var convertToRGBA = function (pixelValue, colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue){
     var colorValue = mapPixel(pixelValue, colorMapping, 255, highestPixelValue, lowestPixelValue, meanPixelValue);
     return {
       "red" : colorValue,
       "green" : colorValue,
       "blue" : colorValue,
-      "alpha" : 255,
-    }
-  }
+      "alpha" : 255
+    };
+  };
   
-  function convertToRGB() {
+  var convertToRGB = function () {
      
-  }
+  };
   
   var pixelFormats = { 
     "RGB" : { "components" : 3, "convert" : convertToRGB },
     "RGBA" : { "components" : 4, "convert" : convertToRGBA }
   };
 
-  function readPixel(dataView, bitpix){
+  var readPixel = function (dataView, bitpix) {
     var pixelValue;
     switch (bitpix) {
       case 8:
@@ -86,22 +75,22 @@
         //if (pixelValue){
         //  pixelValue = (1.0 + ((pixelValue & 0x007fffff) / 0x0800000)) * Math.pow(2, ((pixelValue&0x7f800000)>>23) - 127);
         //}
-        //pixelValue = Math.abs(pixelValue);	
+        //pixelValue = Math.abs(pixelValue);  
         break;
       case -64:
         pixelValue = dataView.getFloat64(0, false);
         break;
       default: 
-        error('Unknown bitpix value');
+        //error('Unknown bitpix value');
     }
     return pixelValue; 
-  }
+  };
 
-  function error (message) {
+  var error = function (message) {
     throw new Error('PIXEL PARSER - ' + message); 
-  }
+  };
   
-  function flipVertical(pixels, width, height){
+  var flipVertical = function (pixels, width, height) {
     var flippedPixels = [];
     var column = 0;
     var row = 0;
@@ -114,9 +103,9 @@
       row += 1;
     } 
     return flippedPixels;
-  }
+  };
   
-  function transpose(pixels, width, height){
+  var transpose = function (pixels, width, height) {
     var transposedPixels = [];
     var column = 0;
     var row = 0;
@@ -129,9 +118,9 @@
       row += 1;
     } 
     return transposedPixels;
-  }
+  };
   
-  FITS.parsePixels = function (header, data, format, colorMapping) {
+  var mapPixels = function (header, data, format, colorMapping) {
     
     var bzero = header.BZERO || 0.0;
     var bscale = header.BSCALE || 1.0;
@@ -161,7 +150,7 @@
       error('No data available in HDU');
     }
     
-    dataView = new FITS.BinaryDataView(data, false, 0, imagePixelsNumber * pixelSize);
+    dataView = new BinaryDataView(data, false, 0, imagePixelsNumber * pixelSize);
     remainingDataBytes = dataView.length();
     while(remainingDataBytes){
       pixelValue = readPixel(dataView, bitpix) * bscale + bzero;        
@@ -191,13 +180,14 @@
     pixels = flipVertical(pixels, header.NAXIS1, header.NAXIS2); // FITS stores pixels in column major order
   
     while (i < imagePixelsNumber) {
-      mappedPixel = pixelFormats["RGBA"].convert(pixels[i], colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue);
+      mappedPixel = pixelFormats.RGBA.convert(pixels[i], colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue);
       mappedPixel.value = pixels[i];
       pixels[i] = mappedPixel;
       i += 1;
     }  
     return pixels;
-    
   };
 
-}).call(this);
+  return mapPixels;
+
+});

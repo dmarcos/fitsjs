@@ -2,21 +2,8 @@
 // Author: Diego Marcos
 // Email: diego.marcos@gmail.com
 
-(function () {
+define(function () {
   "use strict";
-
-  // Save a reference to the global object.
-  var root = this;
-
-  // The top-level namespace. Exported for both CommonJS and the browser.
-  var FITS;
-  if (typeof exports !== 'undefined') {
-    FITS = exports;
-  } else {
-    FITS = root.FITS = root.FITS || {};
-  }
-  
-  FITS.version = '0.0.1';
   
   var blockSize = 2880; // In bytes
   var recordSize = 80;
@@ -27,10 +14,10 @@
     "keyword" : /^[\x30-\x39\x41-\x5A\x5F\x2D]+$/, // Sec 4.1.2.1
     "comment" : /^[\x20-\x7E]*$/, // Sec 4.1.2.3
     "string" : /^\x27[\x20-\x7E]*\x27$/,
-    "integer" : /^[-+]{0,1}\d+$/,
-    "complexInteger" : /^\(\s*([-+]{0,1}\d)\s*,\s*([-+]{0,1}\d)\s*\)$/,
-    "float" : /^[-+]{0,1}\d*(\.\d*){0,1}([ED][-+]{0,1}\d+){0,1}$/,
-    "complexFloat" : /^\(\s*([-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][-+]{0,1}\d+){0,1})\s*,\s*([-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][-+]{0,1}\d+){0,1})\s*\)$/,
+    "integer" : /^[\-+]{0,1}\d+$/,
+    "complexInteger" : /^\(\s*([\-+]{0,1}\d)\s*,\s*([\-+]{0,1}\d)\s*\)$/,
+    "float" : /^[\-+]{0,1}\d*(\.\d*){0,1}([ED][\-+]{0,1}\d+){0,1}$/,
+    "complexFloat" : /^\(\s*([\-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][\-+]{0,1}\d+){0,1})\s*,\s*([\-+]{0,1}\d*(?:\.\d*){0,1}(?:[ED][\-+]{0,1}\d+){0,1})\s*\)$/,
     "valueComment" : /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/,
     "logical" : /^(T|F)$/,
     "date" : /^\d{2,4}[:\/\-]\d{2}[:\/\-]\d{2}(T\d{2}:\d{2}:\d{2}(\.\d*){0,1}){0,1}$/,
@@ -38,10 +25,25 @@
     "ptypeXXX" : /^PTYPE\d{1,3}$/,
     "pscalXXX" : /^PSCAL\d{1,3}$/,
     "pzeroXXX" : /^PZERO\d{1,3}$/,
-    "naxis" : /^NAXIS\d{1,3}$/,
+    "naxis" : /^NAXIS\d{1,3}$/
+  };
+
+  var trim = function(inputString, leading, trailing) {
+    var trimmedString = inputString;
+    if (!leading && !trailing) {
+      return trimmedString.replace(/^\s*(\S*(?:\s+\S+)*)\s*$/, "$1");
+    } else {
+      if (leading) {
+        trimmedString = trimmedString.replace(/^\s*(\S*(?:\s+\S+)*\s*)$/, "$1");
+      }
+      if (trailing) {
+        trimmedString = trimmedString.replace(/^(\s*\S*(?:\s+\S+)*)\s*$/, "$1");
+      }
+      return trimmedString;
+    }
   };
   
-  function validateLogical(value, error){
+  var validateLogical = function(value, error){
     if (value) {
       if (!expressions.logical.test(value)) {
         error('Logical value: ' + value + 'not valid. Must be T or F');
@@ -49,30 +51,30 @@
       }
     } 
     return value === 'T'? true : false;
-  }
+  };
   
-  function validateDate(value, error){
+  var validateDate = function(value, error){
     if (value) {  
       value = value.replace(/\x27/g, ''); // Removing enclosing quotes.
-      if (!expressions['date'].test(value)) {
+      if (!expressions.date.test(value)) {
         error('Date ' + value + ' has no valid format');
         return;
       }
     }
     return value;
-  }
+  };
   
-  function validateFloat(value, error){ // Sec 4.2.4
+  var validateFloat = function(value, error){ // Sec 4.2.4
     if (value) {  
-      if (!expressions['float'].test(value)) {
+      if (!expressions.float.test(value)) {
         error('Float ' + value + ' has no valid format. Sec 4.2.4');
         return;
       }
     }
     return parseFloat(value);
-  }
+  };
   
-  function validateComplexFloat(value, error) { // Sec 4.2.6
+  var validateComplexFloat = function(value, error) { // Sec 4.2.6
     var parts;
     if (value) {  
       if (!expressions.complexFloat.test(value)) {
@@ -85,19 +87,19 @@
       real : parseFloat(parts[1]),
       imaginary : parseFloat(parts[2])  
     };
-  }
+  };
   
-  function validateInteger(value, error) { // Sec 4.2.3
+  var validateInteger = function(value, error) { // Sec 4.2.3
     if (value) {  
       if (!expressions.integer.test(value)) {
         error('Integer ' + value + ' has no valid format. Sec 4.2.3');
         return;
       }
     }
-    return parseInt(value);       
-  }
+    return parseInt(value, 10);       
+  };
   
-  function validateComplexInteger(value, error) { // Sec 4.2.5
+  var validateComplexInteger = function(value, error) { // Sec 4.2.5
     var parts;
     if (value) {  
       if (!expressions.complexInteger.test(value)) {
@@ -107,12 +109,12 @@
       parts = expressions.complexInteger.exec(value);
     }
     return { 
-      real : parseInt(parts[1]),
-      imaginary : parseInt(parts[2])  
+      real : parseInt(parts[1], 10),
+      imaginary : parseInt(parts[2], 10)  
     };
-  }
+  };
   
-  function validateString(value, error) { // Sec 4.2.1
+  var validateString = function(value, error) { // Sec 4.2.1
     if (value) {  
       if (!expressions.string.test(value)) {
         error('String ' + value + ' contains non valid characters. Sec 4.2.1');
@@ -127,13 +129,22 @@
       value = trim(value, false, true); // Removing non significant trailing spaces. Sec. 4.2.1 
     }
     return value;
-  }
+  };
   
-  function validateBITPIX(value, error) {
+  var validateNAXIS = function(value, error) {
+    value = parseInt(validateInteger(value, error), 10);
+    if (value <= 0 || value > 999) {
+      error('Not valid value for NAXIS: ' + value + ' Accepted values between 1 and 999. Sec 4.4.1');
+      return;
+    } 
+    return value;
+  };
+
+  var validateBITPIX = function(value, error) {
     var validValues = fixedFormatKeywords.BITPIX.validValues;
     var i = 0;
     var valid = false;
-    value = parseInt(validateInteger(value, error));
+    value = parseInt(validateInteger(value, error), 10);
     while (i < validValues.length) {
       if (validValues[i] === value) {
         valid = true;
@@ -146,18 +157,9 @@
       return;
     }
     return value;
-  }
+  };
   
-  function validateNAXIS(value, error) {
-    value = parseInt(validateInteger(value, error));
-    if (value <= 0 || value > 999) {
-      error('Not valid value for NAXIS: ' + value + ' Accepted values between 1 and 999. Sec 4.4.1');
-      return;
-    } 
-    return value;
-  }
-  
-  function validatePrimaryHeader(header, error) {
+  var validatePrimaryHeader = function(header, error) {
     var i = 0;
     while (i < mandatoryKeywordsPrimaryHeader.length) {
       if (header[mandatoryKeywordsPrimaryHeader[i]] === undefined) {
@@ -165,9 +167,9 @@
       }
       i += 1;
     }
-  }
+  };
   
-  function validateExtensionHeader(header, error) {
+  var validateExtensionHeader = function(header, error) {
     var i = 0;
     while (i < mandatoryKeywordsExtensionHeader.length) {
       if (header[mandatoryKeywordsExtensionHeader[i]] === undefined) {
@@ -175,18 +177,8 @@
       }
       i += 1;
     }
-  }
-  
-  function extend(objTarget, objSource) {
-    var prop;
-    for (prop in objSource) {
-      if (objSource[prop] !== void 0) {
-        objTarget[prop] = objSource[prop];
-      }
-    }
-    return objTarget; 
-  }
-  
+  };
+
   var fixedFormatKeywords = {
     "BITPIX": { // Sec 4.4.1.1
       validValues: [8, 16, 32, 64, -32, -64],
@@ -255,22 +247,17 @@
     }
   };
   
-  var trim = function (inputString, leading, trailing) {
-    var trimmedString = inputString;
-    if (!leading && !trailing) {
-      return trimmedString.replace(/^\s*(\S*(?:\s+\S+)*)\s*$/, "$1");
-    } else {
-      if (leading) {
-        trimmedString = trimmedString.replace(/^\s*(\S*(?:\s+\S+)*\s*)$/, "$1");
+  var extend = function(objTarget, objSource) {
+    var prop;
+    for (prop in objSource) {
+      if (objSource[prop] !== void 0) {
+        objTarget[prop] = objSource[prop];
       }
-      if (trailing) {
-        trimmedString = trimmedString.replace(/^(\s*\S*(?:\s+\S+)*)\s*$/, "$1");
-      }
-      return trimmedString;
     }
+    return objTarget; 
   };
   
-  function validateComment(comment, error) { 
+  var validateComment = function(comment, keyword, error) { 
     if (comment) {
       comment = trim(comment);
       if (!expressions.comment.test(comment)) { 
@@ -279,9 +266,9 @@
       }
     }
     return comment;
-  }
+  };
   
-  function validateKeyword(keyword, error) { 
+  var validateKeyword = function(keyword, error) { 
     keyword = trim(keyword);
     if (keyword) {
       if (!expressions['keyword'].test(keyword)) { 
@@ -290,9 +277,9 @@
       } 
     }
     return keyword;
-  }
+  };
   
-  function validateFreeFormatValue(value, keyword, error){
+  var validateFreeFormatValue = function(value, keyword, error){
     if (expressions.dateXXXX.test(keyword)) {
       return validateDate(value, error);
     }
@@ -300,7 +287,7 @@
       return validateString(value, error);
     }
     if (expressions.pscalXXX.test(keyword)) {
-      return validFloat(value, error);
+      return validateFloat(value, error);
     }
     if (expressions.pzeroXXX.test(keyword)) {
       return validateFloat(value, error);
@@ -317,13 +304,13 @@
     if (expressions.integer.test(value)) {
       return validateInteger(value, error);
     }
-    if (expressions['float'].test(value)) {
+    if (expressions.float.test(value)) {
       return validateFloat(value, error);
     }
     return value;
-  }
+  };
   
-  function validateValue(value, keyword, recordString, error){
+  var validateValue = function(value, keyword, recordString, error){
     if(value){
       value = trim(value);
       if (fixedFormatKeywords[keyword]) {
@@ -337,9 +324,9 @@
       }
     }
     return value;
-  }
+  };
 
-  function parseHeaderRecord(recordString, error, warning) {
+  var parseHeaderRecord = function(recordString, error, warning) {
     var record = {};
     var valueComment = expressions.valueComment.exec(recordString.substring(10));
     var value;
@@ -355,12 +342,12 @@
     }
     
     record.keyword = validateKeyword(keyword, error) || undefined;
-    record.comment = validateComment(comment, warning) || undefined;
+    record.comment = validateComment(comment, keyword, warning) || undefined;
     record.value = validateValue(value, record.keyword, recordString, error);
     return record;
-  }
+  };
   
-  function parseHeaderBlock(blockString, error, warning) {
+  var parseHeaderBlock = function(blockString, error, warning) {
     var records = [];
     var record = {};
     var bytePointer = 0;
@@ -379,9 +366,9 @@
       }  
     }
     return records;
-  }
+  };
   
-  FITS.FileParser = function () {
+  var FitsFileParser = function () {
     var file;
     var data = "";
     var headerRecords = [];
@@ -445,7 +432,7 @@
       reader.readAsText(fileBlock);
     }
       
-    function parseDataBlocks(dataSize, success, error) {
+    var parseDataBlocks = function(dataSize, success, error) {
       var fileBlock;
       var reader = new FileReader();
       var blocksToRead = Math.ceil(dataSize / blockSize);
@@ -466,9 +453,9 @@
       fileBlock = slice.call(file, fileBytePointer, fileBytePointer + bytesToRead);
       fileBytePointer += bytesToRead;
       reader.readAsArrayBuffer(fileBlock);
-    }
+    };
     
-    function parseHeaderJSON(headerRecords){
+    var parseHeaderJSON = function(headerRecords){
       var i = 0;
       var header = {};
       var keyword;
@@ -484,9 +471,9 @@
         i += 1;
       }
       return header;
-    }
+    };
     
-    function parseHeaderDataUnit(success, error) {
+    var parseHeaderDataUnit = function(success, error) {
       var headerJSON;
       var dataSize;
       var successParsingData = function () {
@@ -508,10 +495,12 @@
         }
         parseDataBlocks(dataSize, successParsingData, error);
       };
+      
       headerRecords = [];
       data = [];
       parseHeaderBlocks(succesParsingHeader, error);
-    }
+    
+    };
    
     this.parse = function (inputFile) {
       fileBytePointer = 0;
@@ -524,10 +513,10 @@
       
       var onErrorParsingHeaderDataUnit = function(error) {
         that.onError(error);
-      }
+      };
       
       var onParsedHeaderDataUnit = function(headerDataUnit){
-        if (headerDataUnits.length == 0){
+        if (headerDataUnits.length === 0){
           validatePrimaryHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
         } else {
           validateExtensionHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
@@ -538,7 +527,7 @@
         } else {
           that.onParsed(headerDataUnits);
         }
-      }    
+      };    
       parseHeaderDataUnit(onParsedHeaderDataUnit, onErrorParsingHeaderDataUnit);
        
     };
@@ -550,4 +539,6 @@
 
   };
 
-}).call(this);
+  return FitsFileParser;
+
+});

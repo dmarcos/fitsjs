@@ -1,17 +1,9 @@
-(function () {
+define(function (require) {
   "use strict";
 
-  // Save a reference to the global object.
-  var root = this;
+  var FITSFileParser = require('./fitsFileParser');  
+  var mapPixels = require('./fitsPixelMapper');
 
-  // The top-level namespace. Exported for both CommonJS and the browser.
-  var FITS;
-  if (typeof exports !== 'undefined') {
-    FITS = exports;
-  } else {
-    FITS = root.FITS = root.FITS || {};
-  }
-  
   var offScreenCanvas;
   var offScreenContext;
   var offScreenCanvasWidth;
@@ -34,7 +26,7 @@
 
   var highLightedPixel;
   
-  function renderPixels(pixels, canvas){
+  var renderPixels = function(pixels, canvas){
     var context = canvas.getContext("2d");
     var image = context.createImageData(canvas.getAttribute('width'), canvas.getAttribute('height'));
     var pixelIndex = 0;
@@ -50,9 +42,9 @@
       pixelIndex += 1;
     }
     context.putImageData(image, 0, 0);
-  }
+  };
 
-  function cursorToPixel(cursorX, cursorY){
+  var cursorToPixel = function(cursorX, cursorY){
     var viewportPixelX = cursorX / zoomFactor;
     var viewportPixelY = cursorY / zoomFactor;
     var xCoordinate = Math.floor(viewportPosition.x + viewportPixelX);
@@ -68,15 +60,15 @@
       cursorInfo.ra = raDec.ra;
       cursorInfo.dec = raDec.dec;
     }
-    return cursorInfo
-  }
+    return cursorInfo;
+  };
 
-  function coordinateToCanvasPixel(x,y){
+  var coordinateToCanvasPixel = function(x,y){
     var imageCoordinates = cursorToPixel(x, y);
     var viewportCoordinates = cursorToPixel(x, y);
-  }
+  };
   
-  function centerViewport(scaleFactor, zoomIn, cursorX, cursorY){
+  var centerViewport = function(scaleFactor, zoomIn, cursorX, cursorY){
     var newPositionX;
     var newPositionY;
     var translationX = cursorX / scaleFactor;
@@ -88,16 +80,16 @@
     if (newPositionX < 0 || newPositionY < 0) {
       return;
     }
-    viewportPosition.x = newPositionX, 
+    viewportPosition.x = newPositionX;
     viewportPosition.y = newPositionY;
-  }
+  };
 
-  function scaleViewport(zoomFactor){
+  var scaleViewport = function(zoomFactor){
     viewportWidth = onScreenCanvasWidth / zoomFactor;
     viewportHeight = onScreenCanvasHeight / zoomFactor;
-  }
+  };
 
-  function copyPixels(){
+  var copyPixels = function(){
     var zoomedImage = onScreenContext.createImageData(onScreenCanvasWidth, onScreenCanvasHeight);
     var viewportImage = onScreenContext.getImageData(viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight);
     var row = 0;
@@ -109,16 +101,16 @@
           zoomedImage[row*viewportWidth + column + copied] = viewportImage.data[row*viewportWidth + column];
           zoomedImage[row*viewportWidth + column + copied + 1] = viewportImage.data[row*viewportWidth + column + 1];
           zoomedImage[row*viewportWidth + column + copied + 2] = viewportImage.data[row*viewportWidth + column + 2];
-          zoomedImage[row*viewportWidth + column + copied + 3] = viewportImage.data[row*viewportWidth + columnc + 3];
+          zoomedImage[row*viewportWidth + column + copied + 3] = viewportImage.data[row*viewportWidth + column + 3];
         }
 
 
       }
       row += 1;
     }
-  }
+  };
   
-  function draw(){
+  var draw = function(){
     // onScreenContext.putImageData(offScreenCanvas.getImageData(viewportPosition.x, viewportPosition.y, viewportWidth, viewportHeight), 0, 0);
     scaleViewport(zoomFactor); 
     onScreenContext.clearRect(0, 0, onScreenCanvasWidth, onScreenCanvasHeight);
@@ -127,9 +119,9 @@
     //  onScreenContext.fillStyle = "rgba(255, 0, 0, 0.5)"; 
     //  onScreenContext.fillRect(highLightedPixel.x, highLightedPixel.y, highLightedPixel.size, highLightedPixel.size);
     //}
-  }
+  };
 
-  function highlightPixel(mouseX, mouseY){
+  var highlightPixel = function(mouseX, mouseY){
     var xCoordinate = Math.floor(mouseX / zoomFactor);
     var yCoordinate = Math.floor(mouseY / zoomFactor);
     var size = zoomFactor;
@@ -138,9 +130,13 @@
       "y" : yCoordinate,
       "size" : size
     };
-  }
+  };
   
-  function mouseMoved(event){
+  var onHoverPixelChanged = function(pixelInfo) {
+    console.log("Pixel: " + pixelInfo.x + " " + pixelInfo.y + " " + pixelInfo.value);  
+  };
+
+  var mouseMoved = function(event){
     var scrollVector;
     var mousePosition;
     if (mouseDown) {
@@ -163,9 +159,9 @@
       }
       draw();
     }
-    FITS.onHoverPixelChanged(cursorToPixel(event.offsetX, event.offsetY));
+    onHoverPixelChanged(cursorToPixel(event.offsetX, event.offsetY));
     //highlightPixel(event.offsetX, event.offsetY);
-  }
+  };
   
   var buttonPressed = function(event){
     mouseDown = true;
@@ -186,7 +182,7 @@
         newZoomFactor > zoomFactor && viewportHeight >= 2 && viewportWidth >= 2) { // Zoom In
       centerViewport(newZoomFactor, newZoomFactor > zoomFactor, mouseX, mouseY);    
       zoomFactor = newZoomFactor; 
-      highlightPixel(event.offsetX, event.offsetY);
+      //highlightPixel(event.offsetX, event.offsetY);
       draw();
     }
   };
@@ -203,13 +199,9 @@
     var wheel = event.wheelDelta/120;//n or -n
     zoom(wheel > 0? zoomFactor*2 : zoomFactor/2, event.offsetX, event.offsetY);
   };
-
-  FITS.onHoverPixelChanged = function(pixelInfo) {
-    console.log("Pixel: " + pixelInfo.x + " " + pixelInfo.y + " " + pixelInfo.value);  
-  };
   
-  FITS.renderFile = function(file, canvas, success){
-    var fitsParser = new FITS.FileParser();
+  var renderFile = function(file, canvas, success){
+    var fitsParser = new FITSFileParser();
     
     canvas.onmousedown = buttonPressed;
     canvas.onmouseup = buttonReleased;
@@ -223,22 +215,22 @@
 
     onScreenCanvas = canvas;
     onScreenContext = onScreenCanvas.getContext('2d');
-    viewportWidth = parseInt(onScreenCanvas.getAttribute('width'));
-    viewportHeight = parseInt(onScreenCanvas.getAttribute('height'));
+    viewportWidth = parseInt(onScreenCanvas.getAttribute('width'), 10);
+    viewportHeight = parseInt(onScreenCanvas.getAttribute('height'), 10);
     onScreenContext.clearRect(0, 0, viewportWidth, viewportHeight);
     onScreenCanvas.style.width = viewportWidth + 'px';
     onScreenCanvas.style.height = viewportHeight + 'px';
 
-    onScreenCanvas.onselectstart = function () { return false; } // ie 
+    onScreenCanvas.onselectstart = function () { return false; }; // ie 
 
     zoomFactor = 1;
     
     fitsParser.onParsed = function(headerDataUnits){
       var HDUs = headerDataUnits;
-      var pixels = FITS.parsePixels(HDUs[0].header, HDUs[0].data, 'RGBA', 'linear');
-      if (FITS.WCS) {
-        FITS.wcsMapper = new FITS.WCS(HDUs[0].header);
-      }
+      var pixels = mapPixels(HDUs[0].header, HDUs[0].data, 'RGBA', 'linear');
+      //if (FITS.WCS) {
+      //  FITS.wcsMapper = new FITS.WCS(HDUs[0].header);
+      //}
       var imageWidth = HDUs[0].header.NAXIS1;
       var imageHeight = HDUs[0].header.NAXIS2;
       offScreenCanvas.setAttribute('width', imageWidth);
@@ -255,8 +247,13 @@
       if(success){
         success();
       }
-    }
+    };
     var fitsHeader = fitsParser.parse(file);
   };
+
+  return {
+    'onHoverPixelChanged' : onHoverPixelChanged,
+    'renderFile' : renderFile
+  };
   
-}).call(this);
+});
