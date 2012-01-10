@@ -1,3 +1,6 @@
 [submodule "src/fitsParser"]
 	path = src/fitsParser
 	url = git@github.com:dmarcos/fitsparser.git
+[submodule "src/pixelCanvas"]
+	path = src/pixelCanvas
+	url = git@github.com:dmarcos/pixelCanvas.git

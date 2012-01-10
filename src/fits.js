@@ -1,4 +1,4 @@
-define(['./fitsParser/src/fitsParser'], function (fitsParser) {
+  define(['./fitsParser/src/fitsParser', './pixelCanvas/pixelCanvas'], function (fitsParser, pixelCanvas) {
   "use strict";
 
   var FITSFileParser = fitsParser.FileParser;  
@@ -103,8 +103,6 @@ define(['./fitsParser/src/fitsParser'], function (fitsParser) {
           zoomedImage[row*viewportWidth + column + copied + 2] = viewportImage.data[row*viewportWidth + column + 2];
           zoomedImage[row*viewportWidth + column + copied + 3] = viewportImage.data[row*viewportWidth + column + 3];
         }
-
-
       }
       row += 1;
     }
