@@ -1,10 +1,9 @@
 
-
 // DataView API wrapper. String -> ArrayBuffer converter
 // Author: Diego Marcos
 // Email: diego.marcos@gmail.com
 
-define('binaryDataView',[],function () {
+define('fitsParser/src/binaryDataView',[],function () {
 
   var BinaryDataView = function(binaryData, plittleEndian, start, offset){
     
@@ -88,7 +87,7 @@ define('binaryDataView',[],function () {
 // FITS images have arbitrary pixel values. Cameras count individual photons
 // Highest pixel value is the brightest and lowest value the faintest
 
-define('fitsPixelMapper',['./binaryDataView'], function (BinaryDataView) {
+define('fitsParser/src/fitsPixelMapper',['./binaryDataView'], function (BinaryDataView) {
   
   
   var mapPixel = function(pixelValue, colorMapping, maxColorValue, highestPixelValue, lowestPixelValue, meanPixelValue) {
@@ -278,7 +277,7 @@ define('fitsPixelMapper',['./binaryDataView'], function (BinaryDataView) {
 // Author: Diego Marcos
 // Email: diego.marcos@gmail.com
 
-define('fitsParser',['./fitsPixelMapper'], function (fitsPixelMapper) {
+define('fitsParser/src/fitsParser',['./fitsPixelMapper'], function (fitsPixelMapper) {
   
   
   var blockSize = 2880; // In bytes
@@ -817,14 +816,14 @@ define('fitsParser',['./fitsPixelMapper'], function (fitsPixelMapper) {
 
   return {
     'FileParser': FitsFileParser,
-    'pixelMapper' : fitsPixelMapper
+    'mapPixels' : fitsPixelMapper
   };
 
 });
-define('fits',['./fitsParser'], function (fitsParser) {
+define('fits',['./fitsParser/src/fitsParser'], function (fitsParser) {
   
 
-  var FITSFileParser = fitsParser.FitsFileParser;  
+  var FITSFileParser = fitsParser.FileParser;  
   var mapPixels = fitsParser.mapPixels;
 
   var offScreenCanvas;

@@ -1,4 +1,4 @@
-define(['./fitsParser'], function (fitsParser) {
+define(['./fitsParser/src/fitsParser'], function (fitsParser) {
   "use strict";
 
   var FITSFileParser = fitsParser.FileParser;  

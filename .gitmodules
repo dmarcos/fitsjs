@@ -1,0 +1,3 @@
+[submodule "src/fitsParser"]
+	path = src/fitsParser
+	url = git@github.com:dmarcos/fitsparser.git
