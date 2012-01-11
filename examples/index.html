@@ -15,6 +15,7 @@
       <span id="dropLabel">Drop file here...</span>
     </div>
     <div id="infobox">
+    <select id="imagesList"></select>
     X : <span id="xCoordinate"></span></br>
     Y : <span id="yCoordinate"></span></br>
     Pixel Value : <span id="pixelValue"></span></br>
@@ -22,12 +23,41 @@
     <input type="file" onchange="renderFile(this.files[0])" style="display: block; padding-top: 10px"> 
   </div> 
 </body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 <script src="/js/require.js" type="text/javascript"></script>
+<script src="/js/pngParser.js" type="text/javascript"></script>
 <script src="/js/fits.js" type="text/javascript"></script>
 <script>
 
-  require(['fits'], function(fits) {
-    var dropbox = document.getElementById("dropbox");
+  var imageFiles = [
+    {
+      path: '/images/M13.fits',
+      name: '/images/M13.fits'
+    },
+    {
+      path: '/images/ngc2967-z_16bit_wHAT_crush.png',
+      name: '/images/ngc2967-z_16bit_wHAT_crush.png'
+  }];
+
+  var options = $("#imagesList");
+  $.each(imageFiles, function() {
+    options.append($("<option />").val(this.path).text(this.name));
+  }); 
+
+  require(['fits','pngParser','./js/binaryajax.js'], function(fits, PNGParser, BinaryAjax) {
+    var dropbox = document.getElementById('dropbox');
+    var canvas = document.getElementById('fitsCanvas');
+    var loadImage = function() {
+      var extensionExpr = /.*\.([^.]+)$/
+      var imageFile = $(this).val();
+      var imageType = (imageFile.match(extensionExpr))[1];
+      BinaryAjax(imageFile, function(oHTTP) {
+        fits.renderImage(oHTTP.responseText, canvas, renderSuccess);
+      });
+    };
+
+    options.change(loadImage);
+
     dropbox.addEventListener("dragenter", noopHandler, false);
     dropbox.addEventListener("dragexit", noopHandler, false);
     dropbox.addEventListener("dragover", noopHandler, false);
@@ -51,29 +81,28 @@
     };
 
     var renderSuccess = function(){
-     document.getElementById('dropLabel').style.display = 'none'; 
-     //document.getElementById('loadingBar').style.display = 'none'; 
-     document.getElementById('fitsCanvas').style.display = 'inline-block';
+      document.getElementById('dropLabel').style.display = 'none'; 
+      //document.getElementById('loadingBar').style.display = 'none'; 
+      document.getElementById('fitsCanvas').style.display = 'inline-block';
     };
 
     renderFile = function(file){
-      var canvas = document.getElementById('fitsCanvas');
       document.getElementById('dropLabel').innerHTML = 'Loading file...';
       //document.getElementById('loadingBar').style.display = 'block'; 
       //canvas.setAttribute('width',this.width);
       //canvas.setAttribute('height',this.height);
       //canvas.setAttribute('id',this.id);
-      fits.renderFile(file, canvas, renderSuccess);
+      fits.renderImage(file, canvas, renderSuccess);
     };
 
-    fits.onHoverPixelChanged = function(pixelInfo){
-      var x = document.getElementById("xCoordinate");
-      var y = document.getElementById("yCoordinate");
-      var value = document.getElementById("pixelValue");
-      x.innerHTML = pixelInfo.x;
-      y.innerHTML = pixelInfo.y;
-      value.innerHTML = pixelInfo.value;
-    };
+    // fits.onHoverPixelChanged = function(pixelInfo){
+    //   var x = document.getElementById("xCoordinate");
+    //   var y = document.getElementById("yCoordinate");
+    //   var value = document.getElementById("pixelValue");
+    //   x.innerHTML = pixelInfo.x;
+    //   y.innerHTML = pixelInfo.y;
+    //   value.innerHTML = pixelInfo.value;
+    // };
 
  });
   
