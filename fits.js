@@ -650,7 +650,7 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
 
     this.parse = function (input) {
       if (input instanceof File){
-        imageType = (input.match(fileExtensionExpr))[1];
+        imageType = (input.fileName.match(fileExtensionExpr))[1];
         if (imageType === 'fits') {
           parser = new FitsFileParser();
         } else if (imageType === 'png') {
