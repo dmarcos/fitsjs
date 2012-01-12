@@ -5,7 +5,6 @@ define(['./libs/fitsParser/src/fitsParser.js', './libs/pixelCanvas/pixelCanvas.j
   var mapPixels = fitsParser.mapPixels;
   
   var renderImage = function(file, canvas, success){
-    var fitsHeader;
     var fitsParser = new FitsParser();
     
     fitsParser.onParsed = function(headerDataUnits){
@@ -31,7 +30,7 @@ define(['./libs/fitsParser/src/fitsParser.js', './libs/pixelCanvas/pixelCanvas.j
       }
     };
 
-    fitsHeader = fitsParser.parse(file);
+    fitsParser.parse(file);
   
   };
 

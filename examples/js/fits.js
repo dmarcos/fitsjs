@@ -273,15 +273,8 @@ define('libs/fitsParser/src/fitsPixelMapper',['./binaryDataView'], function (Bin
   return mapPixels;
 
 });
-// FITS Standard 3.0 Parser
-// Author: Diego Marcos
-// Email: diego.marcos@gmail.com
-
-define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fitsPixelMapper) {
+define('libs/fitsParser/src/fitsValidator',[],function () {
   
-  
-  var blockSize = 2880; // In bytes
-  var recordSize = 80;
   var mandatoryKeywordsPrimaryHeader = ['BITPIX', 'NAXIS'];  // Sec 4.4.1.1
   var mandatoryKeywordsExtensionHeader = ['XTENSION', 'BITPIX', 'NAXIS', 'PCOUNT', 'GCOUNT']; // Sec 4.4.1.2
   
@@ -601,91 +594,27 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
     return value;
   };
 
-  var parseHeaderRecord = function(recordString, error, warning) {
-    var record = {};
-    var valueComment = expressions.valueComment.exec(recordString.substring(10));
-    var value;
-    var comment;
-    var keyword = recordString.substring(0, 8); // Keyword in the first 8 bytes. Sec 4.1.2.1
-    
-    if (recordString.charCodeAt(8) !== 61 || recordString.charCodeAt(9) !== 32) { // Value indicator Sec 4.1.2.2
-      comment = recordString.substring(8); // If not value all the rest of the record treated like a comment Sec 4.1.2
-      comment = comment.trim().replace(/^\/(.*)$/,"$1"); // Removing comment slash indicator
-    } else {
-      value = valueComment[1];
-      comment = valueComment[2];
-    }
-    
-    record.keyword = validateKeyword(keyword, error) || undefined;
-    record.comment = validateComment(comment, keyword, warning) || undefined;
-    record.value = validateValue(value, record.keyword, recordString, error);
-    return record;
+  return {
+    'validatePrimaryHeader' : validatePrimaryHeader,
+    'validateExtensionHeader' : validateExtensionHeader,
+    'validateKeyword' : validateKeyword,
+    'validateComment' : validateComment,
+    'validateValue' : validateValue
   };
-  
-  var parseHeaderBlock = function(blockString, error, warning) {
-    var records = [];
-    var record = {};
-    var bytePointer = 0;
-    var recordString;
-    while (bytePointer < blockString.length) {
-      recordString = blockString.substring(bytePointer, bytePointer + recordSize - 1);
-      if (/^END[\x20]*/.test(recordString)) {
-        records.end = true;
-        return records;
-      }
-      console.log(recordString);
-      bytePointer += recordSize;
-      record = parseHeaderRecord(recordString, error, warning);
-      if (record) {
-        records.push(record);
-      }  
-    }
-    return records;
-  };
-  
-  var FitsParser = function() {
-    var parser;
-    var fileExtensionExpr = /.*\.([^.]+)$/
-    var imageType;
 
-    this.parse = function (input) {
-      if (input instanceof File){
-        imageType = (input.match(extensionExpr))[1];
-        if (imageType === 'fits') {
-          parser = new FitsFileParser();
-        } else if (imageType === 'png') {
-          parser = new PngFileParser();
-        } else {
-          console.error('FitsParser. Unknown image format')
-          return;
-        }
-        parser.onParsed = this.onParsed;
-        parser.onError = this.onError;
-        parser.parse(input);
-      }
-      else if (typeof input === 'string') {
-        
-      }
-    };
-    
-    this.onParsed = function (headerDataUnits) {
-      
-    };
-
-    this.onError = function (error) {
-      console.error(error);
-    };
-
-  };
+});
+define('libs/fitsParser/src/fitsFileParser',['./fitsValidator'], function(fitsValidator) {
 
   var FitsFileParser = function () {
+    var blockSize = 2880; // In bytes
+    var recordSize = 80;
     var file;
     var data = "";
     var headerRecords = [];
     var headerDataUnits = [];
     var fileBytePointer = 0;
     var slice;
-    
+
     if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
       console.error('The File APIs are not fully supported in this browser.');
       return;
@@ -693,7 +622,49 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
       slice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice;
     }
 
-    function parseHeaderBlocks(success, error) {
+    var parseHeaderRecord = function(recordString, error, warning) {
+      var record = {};
+      var valueComment = /^(\s*\x27.*\x27\s*|[^\x2F]*)\x2F{0,1}(.*)$/.exec(recordString.substring(10));
+      var value;
+      var comment;
+      var keyword = recordString.substring(0, 8); // Keyword in the first 8 bytes. Sec 4.1.2.1
+      
+      if (recordString.charCodeAt(8) !== 61 || recordString.charCodeAt(9) !== 32) { // Value indicator Sec 4.1.2.2
+        comment = recordString.substring(8); // If not value all the rest of the record treated like a comment Sec 4.1.2
+        comment = comment.trim().replace(/^\/(.*)$/,"$1"); // Removing comment slash indicator
+      } else {
+        value = valueComment[1];
+        comment = valueComment[2];
+      }
+      
+      record.keyword = fitsValidator.validateKeyword(keyword, error) || undefined;
+      record.comment = fitsValidator.validateComment(comment, keyword, warning) || undefined;
+      record.value = fitsValidator.validateValue(value, record.keyword, recordString, error);
+      return record;
+    };
+
+    var parseHeaderBlock = function(blockString, error, warning) {
+      var records = [];
+      var record = {};
+      var bytePointer = 0;
+      var recordString;
+      while (bytePointer < blockString.length) {
+        recordString = blockString.substring(bytePointer, bytePointer + recordSize - 1);
+        if (/^END[\x20]*/.test(recordString)) {
+          records.end = true;
+          return records;
+        }
+        console.log(recordString);
+        bytePointer += recordSize;
+        record = parseHeaderRecord(recordString, error, warning);
+        if (record) {
+          records.push(record);
+        }  
+      }
+      return records;
+      };
+
+    var parseHeaderBlocks = function (success, error) {
       var fileBlock;
       var reader = new FileReader();
       
@@ -740,7 +711,7 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
       fileBlock = slice.call(file, fileBytePointer, fileBytePointer + blockSize);
       fileBytePointer += blockSize;
       reader.readAsText(fileBlock);
-    }
+    };
       
     var parseDataBlocks = function(dataSize, success, error) {
       var fileBlock;
@@ -759,12 +730,12 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
       reader.onerror = function (e) {
         console.error("Error loading data block");
       };
-   
+
       fileBlock = slice.call(file, fileBytePointer, fileBytePointer + bytesToRead);
       fileBytePointer += bytesToRead;
       reader.readAsArrayBuffer(fileBlock);
     };
-    
+
     var parseHeaderJSON = function(headerRecords){
       var i = 0;
       var header = {};
@@ -782,7 +753,7 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
       }
       return header;
     };
-    
+
     var parseHeaderDataUnit = function(success, error) {
       var headerJSON;
       var dataSize;
@@ -809,9 +780,9 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
       headerRecords = [];
       data = [];
       parseHeaderBlocks(succesParsingHeader, error);
-    
+
     };
-   
+
     this.parse = function (inputFile) {
       fileBytePointer = 0;
       file = inputFile;
@@ -827,9 +798,9 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
       
       var onParsedHeaderDataUnit = function(headerDataUnit){
         if (headerDataUnits.length === 0){
-          validatePrimaryHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
+          fitsValidator.validatePrimaryHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
         } else {
-          validateExtensionHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
+          fitsValidator.validateExtensionHeader(headerDataUnit.header, onErrorParsingHeaderDataUnit);
         }
         headerDataUnits.push(headerDataUnit);
         if (fileBytePointer < file.fileSize){
@@ -837,12 +808,82 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper'], function (fits
         } else {
           that.onParsed(headerDataUnits);
         }
-      };    
+      };  
+        
       parseHeaderDataUnit(onParsedHeaderDataUnit, onErrorParsingHeaderDataUnit);
-       
+    };
+
+    this.onParsed = function (headerDataUnits) {};
+    this.onError = function (error) {
+      console.error(error);
+    };
+
+  };
+
+  return FitsFileParser;
+
+});
+// FITS Standard 3.0 Parser
+// Author: Diego Marcos
+// Email: diego.marcos@gmail.com
+
+define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper', './fitsFileParser'], function (fitsPixelMapper, FitsFileParser) {
+  
+  
+  var FitsParser = function() {
+    var parser;
+    //var fileExtensionExpr = /.*\.([^.]+)$/
+    var imageType;
+    var that = this;
+
+    var checkFileSignature = function(file, success) {
+      var reader = new FileReader();
+      var slice;
+
+      reader.onload = function (e) {
+        success(this.result, file);
+      };
+
+      reader.onerror = function (e) {
+        console.error("Error loading block");
+      };
+
+      if (!window.File || !window.FileReader || !window.FileList || !window.Blob) {
+        console.error('The File APIs are not fully supported in this browser.');
+        return;
+      } else {  // For Mozilla 4.0+ || Chrome and Safari || Opera and standard browsers
+        slice = File.prototype.mozSlice || File.prototype.webkitSlice || File.prototype.slice;
+      }
+      reader.readAsText(slice.call(file, 0, 8));
+
+    };
+
+    var parseFile = function (fileSignature, file){
+      
+      if (fileSignature === 'SIMPLE  ') {
+        parser = new FitsFileParser();
+      } else if (fileSignature === String.fromCharCode(65533, 80, 78, 71, 13, 10, 26, 10)) {
+        parser = new PngFileParser();
+      } else {
+        console.error('FitsParser. Unknown image format')
+        return;
+      }
+      parser.onParsed = that.onParsed;
+      parser.onError = that.onError;
+      parser.parse(file);
+
+    };
+
+    this.parse = function (input) {
+      if (input instanceof File) {
+        checkFileSignature(input, parseFile);
+      }
+      else if (typeof input === 'string') {
+      }
     };
     
     this.onParsed = function (headerDataUnits) {};
+
     this.onError = function (error) {
       console.error(error);
     };
@@ -944,7 +985,6 @@ define('fits',['./libs/fitsParser/src/fitsParser.js', './libs/pixelCanvas/pixelC
   var mapPixels = fitsParser.mapPixels;
   
   var renderImage = function(file, canvas, success){
-    var fitsHeader;
     var fitsParser = new FitsParser();
     
     fitsParser.onParsed = function(headerDataUnits){
@@ -970,7 +1010,7 @@ define('fits',['./libs/fitsParser/src/fitsParser.js', './libs/pixelCanvas/pixelC
       }
     };
 
-    fitsHeader = fitsParser.parse(file);
+    fitsParser.parse(file);
   
   };
 
