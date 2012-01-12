@@ -201,29 +201,22 @@ define('libs/fitsParser/src/fitsPixelMapper',['./binaryDataView'], function (Bin
     } 
     return transposedPixels;
   };
-  
-  var mapPixels = function (header, data, format, colorMapping) {
-    
-    var bzero = header.BZERO || 0.0;
-    var bscale = header.BSCALE || 1.0;
-    var bitpix = header.BITPIX;
-    var pixelSize = Math.abs(bitpix) / 8; // In bytes
+
+  var parsePixels = function(header, data){
+
+    var bzero;
+    var bscale;
+    var bitpix;
+    var pixelSize; // In bytes
     var pixelValue;
     var lowestPixelValue;
     var highestPixelValue;
     var meanPixelValue;
-    var dataView;
+    var imagePixelsNumber;
     var remainingDataBytes;
-    var imagePixelsNumber = header.NAXIS1 * header.NAXIS2;
+    var dataView;
     var pixels = [];
-    var mappedPixel;
-    var i = 0;
-    colorMapping = colorMapping || 'linear';
-    
-    if (!format || !pixelFormats[format]) {
-     error('Unknown pixel format');
-    }
-    
+
     if (!header) {
       error('No header available in HDU');
     }
@@ -231,9 +224,15 @@ define('libs/fitsParser/src/fitsPixelMapper',['./binaryDataView'], function (Bin
     if (!data) {
       error('No data available in HDU');
     }
-    
+
+    bzero = header.BZERO || 0.0;
+    bscale = header.BSCALE || 1.0;
+    bitpix = header.BITPIX;
+    pixelSize = Math.abs(bitpix) / 8; // In bytes
+    imagePixelsNumber = header.NAXIS1 * header.NAXIS2;
     dataView = new BinaryDataView(data, false, 0, imagePixelsNumber * pixelSize);
     remainingDataBytes = dataView.length();
+
     while(remainingDataBytes){
       pixelValue = readPixel(dataView, bitpix) * bscale + bzero;        
     
@@ -258,19 +257,49 @@ define('libs/fitsParser/src/fitsPixelMapper',['./binaryDataView'], function (Bin
       }
       remainingDataBytes -= pixelSize;
     }
+
+    header.MAXPIXEL = highestPixelValue;
+    header.MINPIXEL = lowestPixelValue;
+    header.MEANPIXEL = meanPixelValue;
     
     pixels = flipVertical(pixels, header.NAXIS1, header.NAXIS2); // FITS stores pixels in column major order
   
-    while (i < imagePixelsNumber) {
-      mappedPixel = pixelFormats.RGBA.convert(pixels[i], colorMapping, highestPixelValue, lowestPixelValue, meanPixelValue);
+    return pixels;
+    
+  };
+
+  var mapPixels = function (header, pixels, format, colorMapping) {
+    var mappedPixel;
+    var i = 0;
+    var colorMapping = colorMapping || 'linear';
+    
+    if (!format || !pixelFormats[format]) {
+     error('Unknown pixel format');
+    }
+    
+    if (!header) {
+      error('No header available in HDU');
+    }
+    
+    if (!pixels) {
+      error('No pixels available');
+    }
+    
+    while (i < pixels.length) {
+      mappedPixel = pixelFormats.RGBA.convert(pixels[i], colorMapping, header.MAXPIXEL, header.MINPIXEL, header.MEANPIXEL);
       mappedPixel.value = pixels[i];
       pixels[i] = mappedPixel;
       i += 1;
     }  
+
     return pixels;
+
   };
 
-  return mapPixels;
+  return {
+    'mapPixels' : mapPixels,
+    'parsePixels' : parsePixels
+  };
 
 });
 define('libs/fitsParser/src/fitsValidator',[],function () {
@@ -603,7 +632,7 @@ define('libs/fitsParser/src/fitsValidator',[],function () {
   };
 
 });
-define('libs/fitsParser/src/fitsFileParser',['./fitsValidator'], function(fitsValidator) {
+define('libs/fitsParser/src/fitsFileParser',['./fitsValidator', './fitsPixelMapper'], function(fitsValidator, pixelMapper) {
 
   var FitsFileParser = function () {
     var blockSize = 2880; // In bytes
@@ -760,7 +789,7 @@ define('libs/fitsParser/src/fitsFileParser',['./fitsValidator'], function(fitsVa
       var successParsingData = function () {
         success({
           "header": headerJSON,
-          "data": data,
+          "data": pixelMapper.parsePixels(headerJSON, data),
           "headerRecords": headerRecords
         });
       };
@@ -811,6 +840,7 @@ define('libs/fitsParser/src/fitsFileParser',['./fitsValidator'], function(fitsVa
       };  
         
       parseHeaderDataUnit(onParsedHeaderDataUnit, onErrorParsingHeaderDataUnit);
+      
     };
 
     this.onParsed = function (headerDataUnits) {};
@@ -1576,6 +1606,7 @@ define('libs/fitsParser/src/libs/pngParser/src/pngParser.js',['./jdataview', './
 
       headerDataUnit.header.NAXIS1 = this.width;
       headerDataUnit.header.NAXIS2 = this.height;
+      headerDataUnit.header.BITPIX = 16;
       headerDataUnit.header.MINPIXEL = this.min_pixel;
       headerDataUnit.header.MAXPIXEL = this.max_pixel;
 
@@ -1881,7 +1912,7 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper', './fitsFilePars
 
   return {
     'Parser': FitsParser,
-    'mapPixels' : fitsPixelMapper
+    'mapPixels' : fitsPixelMapper.mapPixels
   };
 
 });
