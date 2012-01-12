@@ -1805,9 +1805,7 @@ define('libs/fitsParser/src/libs/pngParser/src/pngParser.js',['./jdataview', './
     return pr;
   };
 
-  return {
-    'PngParser' : PNGStringParser
-  };
+  return PNGStringParser;
 
 });
 // FITS Standard 3.0 Parser
@@ -1815,7 +1813,7 @@ define('libs/fitsParser/src/libs/pngParser/src/pngParser.js',['./jdataview', './
 // Email: diego.marcos@gmail.com
 
 define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper', './fitsFileParser', './libs/pngParser/src/pngParser.js'], function (fitsPixelMapper, FitsFileParser, PngParser) {
-  
+   
   
   var FitsParser = function() {
     var parser;
@@ -1869,7 +1867,7 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper', './fitsFilePars
         parser = new PngParser();
         parser.onParsed = this.onParsed;
         parser.onError = this.onError;
-        parser.parse(file);
+        parser.parse(input);
       }
     };
     

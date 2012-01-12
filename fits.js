@@ -1579,8 +1579,8 @@ define('libs/fitsParser/src/libs/pngParser/src/pngParser.js',['./jdataview', './
       headerDataUnit.header.MINPIXEL = this.min_pixel;
       headerDataUnit.header.MAXPIXEL = this.max_pixel;
 
-      for (var i = 0; i < pngImage.height; ++i) {
-        headerDataUnit.data = headerDataUnit.data.concat(pngImage.read_line());
+      for (var i = 0; i < this.height; ++i) {
+        headerDataUnit.data = headerDataUnit.data.concat(this.read_line());
       }
 
       this.headerDataUnits.push(headerDataUnit);
@@ -1805,9 +1805,7 @@ define('libs/fitsParser/src/libs/pngParser/src/pngParser.js',['./jdataview', './
     return pr;
   };
 
-  return {
-    'PngParser' : PNGStringParser
-  };
+  return PNGStringParser;
 
 });
 // FITS Standard 3.0 Parser
@@ -1815,7 +1813,7 @@ define('libs/fitsParser/src/libs/pngParser/src/pngParser.js',['./jdataview', './
 // Email: diego.marcos@gmail.com
 
 define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper', './fitsFileParser', './libs/pngParser/src/pngParser.js'], function (fitsPixelMapper, FitsFileParser, PngParser) {
-  
+   
   
   var FitsParser = function() {
     var parser;
@@ -1869,7 +1867,7 @@ define('libs/fitsParser/src/fitsParser.js',['./fitsPixelMapper', './fitsFilePars
         parser = new PngParser();
         parser.onParsed = this.onParsed;
         parser.onError = this.onError;
-        parser.parse(file);
+        parser.parse(input);
       }
     };
     
