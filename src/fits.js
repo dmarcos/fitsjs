@@ -35,7 +35,8 @@ define(['./libs/fitsParser/src/fitsParser.js', './libs/pixelCanvas/pixelCanvas.j
   };
 
   return {
-    'renderImage' : renderImage
+    'renderImage' : renderImage,
+    'filters' : pixelCanvas.filters
   };
   
 });
