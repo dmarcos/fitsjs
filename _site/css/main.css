@@ -1,0 +1,64 @@
+body{
+  background-color: #e8e8e2; 
+  background-attachment: scroll, scroll;
+  background-clip: border-box, border-box;
+  background-image: url(/images/background.png), none;
+  background-origin: padding-box, padding-box; 
+  font-family: "Helvetica Neue",Helvetica,Arial,serif;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 1.625;
+  color: black; 
+}
+canvas { 
+  cursor: pointer; 
+  -webkit-user-select: none;
+}
+input{
+  font-size: 20px;
+}
+#title{
+ font-weight: bold;
+ font-size: 50px;
+}
+#slogan{
+ font-size: 30px; 
+ vertical-align: middle;
+ line-height: 2;
+}
+#logo{
+ position: absolute;
+ top: 0px;
+ left: 0px;
+ background-image: url(/images/logo.png);
+ width: 399px;
+ height: 252px;
+ z-index: -1; 
+}
+#dropbox{
+  display: inline-block;
+  background-color: #F0EFD1;
+  border-radius: 5px;
+  padding: 10px;
+  width: 640px;
+  height: 480px;
+  border: 2px solid black;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  text-align: center;
+}
+#infobox{
+  height: 600px;
+  width: 340px;
+  float: right;
+}
+#dropLabel{
+  display: inline-block;
+  margin-top: 200px;
+  font: 22px 'Lucida Grande', 'Helvetica Neue', Arial, sans-serif;
+}
+#wrapper{ 
+  width: 1200px;     
+  margin: auto; 
+  padding: 10px;
+}
